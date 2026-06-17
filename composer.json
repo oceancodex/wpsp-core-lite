@@ -1,14 +1,13 @@
 {
-	"name": "oceancodex/wpsp-core",
+	"name": "oceancodex/wpsp-core-lite",
 	"version": "13.1.7",
-	"description": "WordPress Starter Plugin - Core",
+	"description": "WPSP Framework - WordPress Starter Plugin - Core - Lite",
 	"keywords": [
 	],
 	"license": "GPL-2.0-or-later",
 	"require": {
 		"php": "^8.3",
-		"laravel/framework": "^v13.8",
-		"laravel/tinker": "^v3.0",
+		"illuminate/container": "^v13.16",
 		"yahnis-elsts/plugin-update-checker": "^v5.6"
 	},
 	"config": {
