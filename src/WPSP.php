@@ -3,6 +3,7 @@
 namespace WPSPCORE;
 
 use Illuminate\Auth\AuthManager;
+use Illuminate\Container\Container;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Foundation\Application;
@@ -21,7 +22,7 @@ use WPSPCORE\App\View\Directives\adminpagemetaboxes;
 
 abstract class WPSP extends BaseInstances {
 
-	/** @var null|Application */
+	/** @var null|Application|Container */
 	public $application = null;
 	public $response    = null;
 
@@ -30,64 +31,66 @@ abstract class WPSP extends BaseInstances {
 	 */
 
 	public function setApplication($basePath, $handleRequest = true) {
-		$commands = $this->getCustomCommands();
-		$providers = $this->getConfig('providers');
+//		$commands = $this->getCustomCommands();
+//		$providers = $this->getConfig('providers');
 
-		$this->application = Application::configure($basePath)
-			->withRouting(
-				web      : $this->funcs->_getRoutesPath('/original/web.php'),
-				api      : $this->funcs->_getRoutesPath('/original/api.php'),
-				commands : $this->funcs->_getRoutesPath('/original/console.php'),
-				health   : '/up',
-//				apiPrefix: 'api/admin',
-			)
-			->withMiddleware(function(Middleware $middleware) {
-				$middleware->append(StartSessionIfAuthenticated::class); // Start session trước mọi code (bao gồm cả view share).
-//				$middleware->append(StartSession::class);
-			})
-			->withExceptions(function(Exceptions $exceptions) {})
-			->withProviders($providers)
-			->withCommands($commands)
-			->create();
+//		$this->application = Application::configure($basePath)
+//			->withRouting(
+//				web      : $this->funcs->_getRoutesPath('/original/web.php'),
+//				api      : $this->funcs->_getRoutesPath('/original/api.php'),
+//				commands : $this->funcs->_getRoutesPath('/original/console.php'),
+//				health   : '/up',
+////				apiPrefix: 'api/admin',
+//			)
+//			->withMiddleware(function(Middleware $middleware) {
+//				$middleware->append(StartSessionIfAuthenticated::class); // Start session trước mọi code (bao gồm cả view share).
+////				$middleware->append(StartSession::class);
+//			})
+//			->withExceptions(function(Exceptions $exceptions) {})
+//			->withProviders($providers)
+//			->withCommands($commands)
+//			->create();
 
-		$this->setPaths();
-		$this->bootstrap();
+		$this->application = new Container();
+
+//		$this->setPaths();
+//		$this->bootstrap();
 		$this->bindings();
-		$this->extends();
+//		$this->extends();
 
 //		$this->registerBladeDirectives();
 
-		$this->application->boot();
+//		$this->application->boot();
 
-		if ($handleRequest) {
-			$this->handleRequest();
-		}
+//		if ($handleRequest) {
+//			$this->handleRequest();
+//		}
 	}
 
 	public function setApplicationForConsole($basePath) {
-		$commands = $this->getCustomCommands();
-		$providers = $this->getConfig('providers');
+//		$commands = $this->getCustomCommands();
+//		$providers = $this->getConfig('providers');
 
-		$this->application = Application::configure($basePath)
-			->withRouting(
-				web      : $this->funcs->_getRoutesPath('/original/web.php'),
-				api      : $this->funcs->_getRoutesPath('/original/api.php'),
-				commands : $this->funcs->_getRoutesPath('/original/console.php'),
-				health   : '/up',
-//				apiPrefix: 'api/admin',
-			)
-			->withMiddleware(function(Middleware $middleware) {})
-			->withExceptions(function(Exceptions $exceptions) {})
-			->withProviders($providers)
-			->withCommands($commands)
-			->create();
+//		$this->application = Application::configure($basePath)
+//			->withRouting(
+//				web      : $this->funcs->_getRoutesPath('/original/web.php'),
+//				api      : $this->funcs->_getRoutesPath('/original/api.php'),
+//				commands : $this->funcs->_getRoutesPath('/original/console.php'),
+//				health   : '/up',
+////				apiPrefix: 'api/admin',
+//			)
+//			->withMiddleware(function(Middleware $middleware) {})
+//			->withExceptions(function(Exceptions $exceptions) {})
+//			->withProviders($providers)
+//			->withCommands($commands)
+//			->create();
 
-		$this->bootstrapConsole();
-		$this->extendsConsole();
+//		$this->setPaths();
+//		$this->bootstrapConsole();
 		$this->bindingsConsole();
-		$this->extendsConsole();
+//		$this->extendsConsole();
 
-		$this->application->boot();
+//		$this->application->boot();
 
 		return $this->application;
 	}
@@ -177,20 +180,18 @@ abstract class WPSP extends BaseInstances {
 		(new RegisterProviders)->bootstrap($this->application);
 	}
 
-	public function extends() {
-		// Override SessionGuard để thay đổi remember_web_* thành wpsp_remember_web_*
-		$this->overrideRememberCookieName();
-	}
-
-	public function extendsConsole() {}
-
 	public function bindings() {
 		$this->application->instance('files', new Filesystem());
 		$this->application->instance('request', $this->request);
 		$this->application->instance('funcs', $this->funcs ?? new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams));
-		$this->application->singleton('process', function ($app) { return $app->make(Factory::class); });
+//		$this->application->singleton('process', function ($app) { return $app->make(Factory::class); });
 
-		// Bind "storage" dưới dạn alias để sử dụng được cả "filesystem".
+		// Không dùng Schedule của Laravel.
+//		$this->application->instance('schedule', new Schedule());
+//		$this->application->singleton(Schedule::class, new Schedule());
+//		$this->application->alias('schedule', Schedule::class);
+
+		// Bind "storage" dưới dạng alias để sử dụng được cả "filesystem".
 //		$this->application->singleton('storage', function ($app) { return new FilesystemManager($app); });
 		$this->application->singleton('filesystem', function ($app) { return new FilesystemManager($app); });
 		$this->application->alias('filesystem', 'storage');
@@ -209,11 +210,18 @@ abstract class WPSP extends BaseInstances {
 		$this->application->alias('filesystem', FilesystemManager::class);
 	}
 
+	public function extends() {
+		// Override SessionGuard để thay đổi remember_web_* thành wpsp_remember_web_*
+		$this->overrideRememberCookieName();
+	}
+
+	public function extendsConsole() {}
+
 	public function registerBladeDirectives() {
 		$bladeCompiler = $this->application->make('blade.compiler');
 
 		$directiveClasses = [
-			adminpagemetaboxes::class
+			adminpagemetaboxes::class,
 		];
 
 		foreach ($directiveClasses as $directiveClass) {
@@ -231,11 +239,14 @@ abstract class WPSP extends BaseInstances {
 	 */
 
 	public function handleRequest() {
+		// Start session.
+		$this->startSessionIfAuthenticated();
+
 		/** @var \Illuminate\Foundation\Http\Kernel $kernel */
-		$kernel         = $this->application->make(Kernel::class);
-		$this->response = $kernel->handle($this->request);
+//		$kernel         = $this->application->make(Kernel::class);
+//		$this->response = $kernel->handle($this->request);
 //		$this->response->send();
-		$kernel->terminate($this->request, $this->response);
+//		$kernel->terminate($this->request, $this->response);
 		$this->afterHandleRequest();
 	}
 
@@ -257,6 +268,16 @@ abstract class WPSP extends BaseInstances {
 	/*
 	 *
 	 */
+
+	/**
+	 * Start session.
+	 */
+	public function startSessionIfAuthenticated() {
+		$middleware = $this->application->make(StartSessionIfAuthenticated::class);
+		$middleware->handle($this->request, function($request) {
+			return $request;
+		});
+	}
 
 	/**
 	 * Override SessionGuard để thay đổi remember_web_* thành wpsp_remember_web_*
