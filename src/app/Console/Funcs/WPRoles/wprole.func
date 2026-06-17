@@ -1,0 +1,1 @@
+		Route::wp_role('{{ name }}', [{{ class_name }}::class]);

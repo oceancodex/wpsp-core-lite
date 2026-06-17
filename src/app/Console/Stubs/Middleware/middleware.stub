@@ -1,0 +1,18 @@
+<?php
+
+namespace {{ root_namespace }}\App\Http\Middleware;
+
+use {{ core_namespace }}\Base\BaseMiddleware;
+
+class {{ class_name }} extends BaseMiddleware {
+
+	/**
+	 * @param \Symfony\Component\HttpFoundation\Request|\WP_REST_Request $request
+	 *
+	 * @return bool
+	 */
+    public function handle($request) {
+        return true;
+    }
+
+}

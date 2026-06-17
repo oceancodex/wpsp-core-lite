@@ -1,0 +1,34 @@
+<?php
+
+namespace {{ root_namespace }}\App\WordPress\WPRoles;
+
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ core_namespace }}\App\WordPress\WPRoles\BaseWPRole;
+
+class {{ class_name }} extends BaseWPRole {
+
+	use InstancesTrait;
+
+//	public $role         = '{{ name }}';
+//	public $display_name = '{{ name }}';
+//	public $capabilities = [
+//		'edit_pages',
+//		'manage_options',
+//		'edit_themes',
+//	];
+
+	/*
+	 *
+	 */
+
+//	public function __wpspConstruct() {}
+
+	/*
+	 *
+	 */
+
+	public function customProperties() {
+//		$this->capabilities = [];
+	}
+
+}

@@ -1,0 +1,28 @@
+<?php
+
+namespace {{ root_namespace }}\database\seeders;
+
+use Faker\Factory as Faker;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use {{ root_namespace }}\App\Models\SettingsModel;
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ root_namespace }}\Funcs;
+use {{ core_namespace }}\Base\BaseSeeder;
+
+class {{ class_name }} extends BaseSeeder {
+
+	use InstancesTrait, WithoutModelEvents;
+
+	public function run() {
+//		$faker = Faker::create('vi_VN');
+//		$faker = Funcs::faker();
+
+//		for ($i = 0; $i < 20; $i++) {
+//			SettingsModel::create([
+//				'key'   => $faker->userName,
+//				'value' => $faker->name
+//			]);
+//		}
+	}
+
+}

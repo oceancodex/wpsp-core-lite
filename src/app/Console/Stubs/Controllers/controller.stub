@@ -1,0 +1,54 @@
+<?php
+
+namespace {{ root_namespace }}\App\Http\Controllers;
+
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ root_namespace }}\Funcs;
+use {{ core_namespace }}\Base\BaseController;
+
+class {{ class_name }} extends BaseController {
+
+	use InstancesTrait;
+
+    public function index(\WP_REST_Request $request) {
+
+        // Remove slashes at the end of URL and redirect to new URL.
+//		$uri = $this->request->getRequestUri();
+//		if (preg_match('/\/$/iu', $uri)) {
+//			$uri = rtrim($uri, '/');
+//			$response = new RedirectResponse(home_url($uri));
+//			$response->send();
+//		}
+
+    }
+
+    public function create(\WP_REST_Request $request) {
+        //
+    }
+
+    public function store(\WP_REST_Request $request) {
+        //
+    }
+
+    public function show(\WP_REST_Request $request) {
+        //
+    }
+
+    public function edit(\WP_REST_Request $request) {
+        //
+    }
+
+    public function update(\WP_REST_Request $request) {
+        //
+    }
+
+    public function destroy(\WP_REST_Request $request) {
+        //
+    }
+
+    public function forceDestroy(\WP_REST_Request $request) {
+        //
+    }
+
+}

@@ -1,0 +1,19 @@
+<?php
+
+namespace {{ root_namespace }}\App\Events;
+
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ core_namespace }}\Base\BaseInstances;
+
+class {{ class_name }} extends BaseInstances {
+
+	use InstancesTrait;
+
+//	public $user;
+
+//	public function __construct($user) {
+//		parent::__construct();
+//		$this->user = $user;
+//	}
+
+}

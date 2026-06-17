@@ -1,0 +1,1 @@
+		Route::{{ method }}('{{ path }}\/?$', [{{ class_name }}::class, 'index']);

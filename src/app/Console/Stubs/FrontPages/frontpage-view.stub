@@ -1,0 +1,41 @@
+<?php
+
+namespace {{ root_namespace }}\App\WordPress\FrontPages;
+
+use Illuminate\Http\Request;
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ root_namespace }}\Funcs;
+use {{ core_namespace }}\App\WordPress\FrontPages\BaseFrontPage;
+
+class {{ class_name }} extends BaseFrontPage {
+
+	use InstancesTrait;
+
+//	public $path = '{{ path }}';
+
+	/*
+	 *
+	 */
+
+	public function customProperties() {
+//		$this->path = 'front-page\/([^\/]+)\/?$';
+	}
+
+	/*
+	 *
+	 */
+
+	public function index(Request $request, $endpoint = null) {
+//		global $post;
+//		echo '<pre style="background:white;z-index:9999;position:relative">'; print_r($post); echo '</pre>';
+		echo Funcs::view('front-pages.{{ path }}');
+		die();
+//		echo $endpoint;
+	}
+
+	public function update(Request $request) {
+		print_r($request->all());
+		die();
+	}
+
+}

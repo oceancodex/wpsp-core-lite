@@ -1,0 +1,94 @@
+<?php
+
+namespace {{ root_namespace }}\App\WordPress\Widgets;
+
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ root_namespace }}\Funcs;
+use {{ core_namespace }}\App\WordPress\Widgets\BaseWidget;
+
+class {{ class_name }} extends BaseWidget {
+
+	use InstancesTrait;
+
+//	public $id_base         = '{{ id_base }}';
+//	public $name            = '{{ id_base }}';
+//	public $widget_options  = [];
+//	public $control_options = [];
+
+	/*
+	 *
+	 */
+
+//	public function __wpspConstruct(Request $request) {
+//		dump($request);
+//	}
+
+	/*
+	 *
+	 */
+
+	/**
+	 * Tùy chỉnh các tham số.
+	 */
+	public function customProperties() {
+//		$this->id_base 	= '{{ id_base }}';
+//		$this->name 	= '{{ id_base }}';
+		$this->widget_options = [
+//			'classname'                   => '{{ id_base }}',
+			'description'                 => '{{ id_base }} - Description.',
+//			'customize_selective_refresh' => true,
+//			'show_instance_in_rest'       => true,
+		];
+//		$this->control_options = [
+//			'width' => 400,
+//			'height' => 350,
+//			'id_base' => '{{ id_base }}',
+//		];
+	}
+
+	/*
+	 *
+	 */
+
+	/**
+	 * Renders the widget content in front-end.
+	 *
+	 * @param array $args     An associative array of widget arguments.
+	 * @param array $instance An associative array of widget instance settings.
+	 *
+	 * @return void
+	 */
+	public function widget($args, $instance) {
+		echo Funcs::view('widgets.{{ id_base }}.widget', compact('instance', 'args'))->with([
+			'widget' => $this,
+		])->render();
+	}
+
+	/**
+	 * Renders the form for the widget.
+	 *
+	 * @param array $instance The instance data of the widget, including parameters such as 'title'.
+	 *
+	 * @return void
+	 */
+	public function form($instance) {
+		echo Funcs::view('widgets.{{ id_base }}.form', compact('instance'))->with([
+			'widget' => $this,
+		])->render();
+	}
+
+	/**
+	 * Updates the widget instance with new values.
+	 *
+	 * @param array $new_instance The new instance data submitted by the widget form.
+	 * @param array $old_instance The existing instance data of the widget.
+	 *
+	 * @return array The updated instance data with sanitized settings.
+	 */
+	public function update($new_instance, $old_instance) {
+		$instance          = [];
+		$instance['title'] = sanitize_text_field($new_instance['title']);
+		return $instance;
+	}
+
+}

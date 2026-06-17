@@ -1,0 +1,1 @@
+        Route::schedule('{{ hook }}', [{{ class_name }}::class, 'handle'], ['interval' => '{{ interval }}']);

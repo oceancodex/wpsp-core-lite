@@ -1,0 +1,1 @@
+use {{ root_namespace }}\App\WordPress\MetaBoxes\{{ class_name }};

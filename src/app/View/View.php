@@ -1,0 +1,46 @@
+<?php
+
+namespace WPSPCORE\App\View;
+
+use WPSPCORE\BaseInstances;
+
+/**
+ * @mixin \Illuminate\View\Factory
+ * @mixin \Illuminate\Support\Facades\View
+ */
+abstract class View extends BaseInstances {
+
+	private \Illuminate\View\Factory $view;
+
+	/*
+	 *
+	 */
+
+	public function getView(): \Illuminate\View\Factory {
+		return $this->view;
+	}
+
+	public function setView() {
+		$this->view = $this->funcs->_getApplication('view');
+	}
+
+	/*
+	 *
+	 */
+
+	public function __call($method, $arguments) {
+		return static::__callStatic($method, $arguments);
+	}
+
+	public static function __callStatic($method, $arguments) {
+		$instance = static::instance();
+
+		$underlineMethod = '_' . $method;
+		if (method_exists($instance, $underlineMethod)) {
+			return $instance->$underlineMethod(...$arguments);
+		}
+
+		return $instance->getView()->$method(...$arguments);
+	}
+
+}

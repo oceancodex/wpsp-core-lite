@@ -1,0 +1,1 @@
+        Schedule::name('{{ hook }}')->call({{ class_name }}::class)->{{ interval }}();

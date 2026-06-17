@@ -1,0 +1,42 @@
+<?php
+
+namespace {{ root_namespace }}\App\WordPress\Schedules;
+
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ core_namespace }}\App\WordPress\Schedules\BaseSchedule;
+
+class {{ class_name }} extends BaseSchedule {
+
+	use InstancesTrait;
+
+//	public $hook     = '{{ hook }}';
+//	public $interval = '{{ interval }}';
+
+	/*
+	 *
+	 */
+
+//	public function __wpspConstruct() {
+//		error_log('Schedule "{{ hook }}" __wpspConstruct!');
+//	}
+
+	/*
+	 *
+	 */
+
+	public function __invoke() {
+//		error_log('Schedule "{{ hook }}" __invoke!');
+//		$this->handle($testService);
+	}
+
+	/*
+	 *
+	 */
+
+	public function handle($testService) {
+		// Code here...
+//		error_log('Schedule "{{ hook }}" fired! - Call via __invoke - ' . $testService->test());
+		error_log('Schedule "{{ hook }}" fired! - Call via __invoke');
+	}
+
+}
