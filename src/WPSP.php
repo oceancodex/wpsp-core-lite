@@ -3,7 +3,9 @@
 namespace WPSPCORE;
 
 use Illuminate\Auth\AuthManager;
+use Illuminate\Console\Application as ConsoleApplication;
 use Illuminate\Container\Container;
+use Illuminate\Events\Dispatcher;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Foundation\Application;
@@ -14,9 +16,17 @@ use Illuminate\Foundation\Bootstrap\RegisterProviders;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Kernel;
-use Illuminate\Process\Factory;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Http\Response;
+use Illuminate\Process\Factory as ProcessFactory;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Timebox;
+use Illuminate\View\Compilers\BladeCompiler;
+use Illuminate\View\Engines\CompilerEngine;
+use Illuminate\View\Engines\EngineResolver;
+use Illuminate\View\Factory as ViewFactory;
+use Illuminate\View\FileViewFinder;
 use WPSPCORE\App\Http\Middleware\StartSessionIfAuthenticated;
 use WPSPCORE\App\View\Directives\adminpagemetaboxes;
 
@@ -24,6 +34,7 @@ abstract class WPSP extends BaseInstances {
 
 	/** @var null|Application|Container */
 	public $application = null;
+	public $artisan     = null;
 	public $response    = null;
 
 	/*
@@ -31,66 +42,92 @@ abstract class WPSP extends BaseInstances {
 	 */
 
 	public function setApplication($basePath, $handleRequest = true) {
-//		$commands = $this->getCustomCommands();
-//		$providers = $this->getConfig('providers');
+		if (class_exists('Illuminate\Foundation\Application')) {
+			$commands = $this->getCustomCommands();
+			$providers = $this->getConfig('providers');
 
-//		$this->application = Application::configure($basePath)
-//			->withRouting(
-//				web      : $this->funcs->_getRoutesPath('/original/web.php'),
-//				api      : $this->funcs->_getRoutesPath('/original/api.php'),
-//				commands : $this->funcs->_getRoutesPath('/original/console.php'),
-//				health   : '/up',
-////				apiPrefix: 'api/admin',
-//			)
-//			->withMiddleware(function(Middleware $middleware) {
-//				$middleware->append(StartSessionIfAuthenticated::class); // Start session trước mọi code (bao gồm cả view share).
-////				$middleware->append(StartSession::class);
-//			})
-//			->withExceptions(function(Exceptions $exceptions) {})
-//			->withProviders($providers)
-//			->withCommands($commands)
-//			->create();
+			$this->application = Application::configure($basePath)
+				->withRouting(
+					web      : $this->funcs->_getRoutesPath('/original/web.php'),
+					api      : $this->funcs->_getRoutesPath('/original/api.php'),
+					commands : $this->funcs->_getRoutesPath('/original/console.php'),
+					health   : '/up',
+	//				apiPrefix: 'api/admin',
+				)
+				->withMiddleware(function(Middleware $middleware) {
+//					$middleware->append(StartSessionIfAuthenticated::class); // Start session trước mọi code (bao gồm cả view share).
+//					$middleware->append(StartSession::class);
+//					$middleware->append(PreventRequestForgery::class);
+//					$middleware->append(VerifyCsrfToken::class);
+				})
+				->withExceptions(function(Exceptions $exceptions) {})
+				->withProviders($providers)
+				->withCommands($commands)
+				->create();
 
-		$this->application = new Container();
+			$this->setPaths();
+			$this->bootstrap();
+			$this->bindings();
+			$this->extends();
 
-//		$this->setPaths();
-//		$this->bootstrap();
-		$this->bindings();
-//		$this->extends();
+//			$this->registerBladeDirectives();
 
-//		$this->registerBladeDirectives();
+			$this->application->boot();
 
-//		$this->application->boot();
+			if ($handleRequest) {
+				$this->handleRequest();
+			}
+		}
+		else {
+			$this->application = new Container();
 
-//		if ($handleRequest) {
-//			$this->handleRequest();
-//		}
+//			$this->bootstrap();
+			$this->bindings();
+		}
 	}
 
 	public function setApplicationForConsole($basePath) {
-//		$commands = $this->getCustomCommands();
-//		$providers = $this->getConfig('providers');
+		if (class_exists('Illuminate\Foundation\Application')) {
+			$commands = $this->getCustomCommands();
+			$providers = $this->getConfig('providers');
 
-//		$this->application = Application::configure($basePath)
-//			->withRouting(
-//				web      : $this->funcs->_getRoutesPath('/original/web.php'),
-//				api      : $this->funcs->_getRoutesPath('/original/api.php'),
-//				commands : $this->funcs->_getRoutesPath('/original/console.php'),
-//				health   : '/up',
-////				apiPrefix: 'api/admin',
-//			)
-//			->withMiddleware(function(Middleware $middleware) {})
-//			->withExceptions(function(Exceptions $exceptions) {})
-//			->withProviders($providers)
-//			->withCommands($commands)
-//			->create();
+			$this->application = Application::configure($basePath)
+				->withRouting(
+					web      : $this->funcs->_getRoutesPath('/original/web.php'),
+					api      : $this->funcs->_getRoutesPath('/original/api.php'),
+					commands : $this->funcs->_getRoutesPath('/original/console.php'),
+					health   : '/up',
+//				apiPrefix: 'api/admin',
+				)
+				->withMiddleware(function(Middleware $middleware) {})
+				->withExceptions(function(Exceptions $exceptions) {})
+				->withProviders($providers)
+				->withCommands($commands)
+				->create();
 
-//		$this->setPaths();
-//		$this->bootstrapConsole();
-		$this->bindingsConsole();
-//		$this->extendsConsole();
+			$this->setPaths();
+			$this->bootstrapConsole();
+			$this->bindingsConsole();
+			$this->extendsConsole();
 
-//		$this->application->boot();
+			$this->application->boot();
+		}
+		else {
+			$this->application = new Container();
+			$this->bindingsConsole();
+
+			$this->artisan = new ConsoleApplication(
+				$this->application,
+				$this->application['events'],
+				$this->funcs->_getVersion()
+			);
+
+			$commands = $this->getCustomCommands();
+
+			foreach ($commands as $command) {
+				$this->artisan->add(new $command);
+			}
+		}
 
 		return $this->application;
 	}
@@ -106,6 +143,10 @@ abstract class WPSP extends BaseInstances {
 		return $this->application;
 	}
 
+	public function getArtisan() {
+		return $this->artisan;
+	}
+
 	public function getCustomCommands() {
 		$commands = $this->funcs->_getAllClassesInDir(
 			'WPSPCORE\App\Console\Commands',
@@ -117,12 +158,19 @@ abstract class WPSP extends BaseInstances {
 			__DIR__ . '/app/Console/Commands/Extends'
 		);
 
+		if (!class_exists('Illuminate\Foundation\Application')) {
+			$consoleCommands = $this->funcs->_getAllClassesInDir(
+				$this->funcs->_getRootNamespace() . '\App\Console\Commands',
+				$this->funcs->_getAppPath('/Console/Commands')
+			);
+		}
+
 		$integrationCommands = $this->funcs->_getAllClassesInDir(
 			$this->funcs->_getRootNamespace() . '\App\Widen\Commands',
 			$this->funcs->_getAppPath('/Widen/Commands')
 		);
 
-		$commands = array_merge($commands, $extendCommands, $integrationCommands);
+		$commands = array_merge($commands, $extendCommands, $consoleCommands ?? [], $integrationCommands);
 
 		return $commands;
 	}
@@ -184,12 +232,38 @@ abstract class WPSP extends BaseInstances {
 		$this->application->instance('files', new Filesystem());
 		$this->application->instance('request', $this->request);
 		$this->application->instance('funcs', $this->funcs ?? new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams));
-//		$this->application->singleton('process', function ($app) { return $app->make(Factory::class); });
 
-		// Không dùng Schedule của Laravel.
-//		$this->application->instance('schedule', new Schedule());
-//		$this->application->singleton(Schedule::class, new Schedule());
-//		$this->application->alias('schedule', Schedule::class);
+		if (class_exists('Illuminate\Foundation\Application')) {
+			$this->application->singleton('process', function ($app) { return $app->make(ProcessFactory::class); });
+		}
+		else {
+			$this->application->instance('events', new Dispatcher($this->application));
+			$this->application->singleton('blade.compiler', function($app) {
+				return new BladeCompiler($app['files'], $this->funcs->_getStoragePath('/framework/views'));
+			});
+			$this->application->singleton('view.engine.resolver', function($app) {
+				$resolver = new EngineResolver();
+
+				$resolver->register('blade', function() use ($app) {
+					return new CompilerEngine($app['blade.compiler']);
+				});
+
+				return $resolver;
+			});
+			$this->application->singleton('view.finder', function($app) {
+				return new FileViewFinder(
+					$app['files'],
+					[$this->funcs->_getResourcesPath('/views')]
+				);
+			});
+			$this->application->singleton('view', function($app) {
+				return new ViewFactory(
+					$app['view.engine.resolver'],
+					$app['view.finder'],
+					$app['events']
+				);
+			});
+		}
 
 		// Bind "storage" dưới dạng alias để sử dụng được cả "filesystem".
 //		$this->application->singleton('storage', function ($app) { return new FilesystemManager($app); });
@@ -201,7 +275,38 @@ abstract class WPSP extends BaseInstances {
 	public function bindingsConsole() {
 		$this->application->instance('files', new Filesystem());
 		$this->application->instance('funcs', $this->funcs ?? new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams));
-		$this->application->singleton('process', function ($app) { return $app->make(Factory::class); });
+
+		if (class_exists('Illuminate\Foundation\Application')) {
+			$this->application->singleton('process', function ($app) { return $app->make(ProcessFactory::class); });
+		}
+		else {
+			$this->application->instance('events', new Dispatcher($this->application));
+			$this->application->singleton('blade.compiler', function($app) {
+				return new BladeCompiler($app['files'], $this->funcs->_getStoragePath('/framework/views'));
+			});
+			$this->application->singleton('view.engine.resolver', function($app) {
+				$resolver = new EngineResolver();
+
+				$resolver->register('blade', function() use ($app) {
+					return new CompilerEngine($app['blade.compiler']);
+				});
+
+				return $resolver;
+			});
+			$this->application->singleton('view.finder', function($app) {
+				return new FileViewFinder(
+					$app['files'],
+					[$this->funcs->_getResourcesPath('/views')]
+				);
+			});
+			$this->application->singleton('view', function($app) {
+				return new ViewFactory(
+					$app['view.engine.resolver'],
+					$app['view.finder'],
+					$app['events']
+				);
+			});
+		}
 
 		// Bind "storage" dưới dạn alias để sử dụng được cả "filesystem".
 //		$this->application->singleton('storage', function ($app) { return new FilesystemManager($app); });
@@ -247,6 +352,7 @@ abstract class WPSP extends BaseInstances {
 //		$this->response = $kernel->handle($this->request);
 //		$this->response->send();
 //		$kernel->terminate($this->request, $this->response);
+
 		$this->afterHandleRequest();
 	}
 
@@ -276,7 +382,7 @@ abstract class WPSP extends BaseInstances {
 		$middleware = $this->application->make(StartSessionIfAuthenticated::class);
 		$middleware->handle($this->request, function($request) {
 			return $request;
-		});
+		}, ['funcs' => $this->funcs]);
 	}
 
 	/**

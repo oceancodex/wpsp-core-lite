@@ -10,11 +10,11 @@ use WPSPCORE\BaseInstances;
  * @method static saveSessionsAndCookies
  * @method static cleanupOldSessionsForUser
  *
- * @mixin \Illuminate\Support\Facades\Auth
+ * @mixin \Illuminate\Support\Facades\Auth|\Illuminate\Contracts\Auth\Guard|\Illuminate\Contracts\Auth\StatefulGuard
  */
 abstract class Auth extends BaseInstances {
 
-	public AuthManager $auth;
+	public ?AuthManager $auth;
 
 	/*
 	 *
@@ -24,7 +24,7 @@ abstract class Auth extends BaseInstances {
 		$this->auth = $this->funcs->_getApplication('auth');
 	}
 
-	public function getAuth(): AuthManager {
+	public function getAuth(): ?AuthManager {
 		return $this->auth;
 	}
 
@@ -125,7 +125,7 @@ abstract class Auth extends BaseInstances {
 			return $instance->$underlineMethod(...$arguments);
 		}
 
-		return $instance->getAuth()->$method(...$arguments);
+		return $instance->getAuth()?->$method(...$arguments);
 	}
 
 }

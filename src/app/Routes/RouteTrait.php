@@ -3,6 +3,7 @@
 namespace WPSPCORE\App\Routes;
 
 use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
 use Symfony\Component\HttpFoundation\Response;
@@ -676,6 +677,11 @@ trait RouteTrait {
 		// Set container và facade theo mỗi lần gọi callback.
 		Container::setInstance($container);
 		Facade::setFacadeApplication($container);
+
+		if (class_exists('Illuminate\Database\Eloquent\Model')) {
+			Model::setConnectionResolver($container['db']);
+			Model::setEventDispatcher($container['events']);
+		}
 
 		if (!$call) {
 			return function(...$wpParams) use ($container, $callback, $callParams) {

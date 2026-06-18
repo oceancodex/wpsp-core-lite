@@ -148,6 +148,9 @@ class Funcs extends BaseInstances {
 		return $this->WPSPClass;
 	}
 
+	/**
+	 * @return \Illuminate\Foundation\Application|\Illuminate\Container\Container|mixed
+	 */
 	public function _getApplication($abstract = null, $parameters = []) {
 		try {
 			$app = $this->_getWPSP()->getApplication();
@@ -295,6 +298,10 @@ class Funcs extends BaseInstances {
 
 	public function _getMigrationPath($path = null) {
 		return $this->_getDatabasePath() . '/migrations' . ($path ? '/' . ltrim($path, '/\\') : '');
+	}
+
+	public function _getWidenPath($path = null) {
+		return $this->_getAppPath() . '/Widen' . ($path ? '/' . ltrim($path, '/\\') : '');
 	}
 
 	public function _getMainUrl() {
@@ -764,7 +771,7 @@ class Funcs extends BaseInstances {
 
 	public function _trans($string, $replaces = [], $wordpress = false) {
 		try {
-			if ($wordpress) {
+			if ($wordpress || !class_exists('Illuminate\Translation\Translator')) {
 				return __($string, $this->_getTextDomain());
 			}
 			else {
@@ -820,10 +827,10 @@ class Funcs extends BaseInstances {
 
 	public function _viewInject($views, $data) {
 		if ($data instanceof \Closure) {
-			return $this->_viewInstance()->composer($views, $data);
+			return $this->_viewInstance()?->composer($views, $data);
 		}
 		elseif (is_array($data)) {
-			return $this->_viewInstance()->composer($views, function(View $view) use ($data) {
+			return $this->_viewInstance()?->composer($views, function(View $view) use ($data) {
 				foreach ($data as $key => $value) {
 					$view->with($key, $value);
 				}

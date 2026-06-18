@@ -53,9 +53,15 @@ class MakeScheduleCommand extends Command {
 
 		// Chuẩn bị thêm các biến để sử dụng.
 		$className = Str::slug($hook, '_');
-//		$type      = $type ?? $this->option('type') ?: 'wordpress';
-		$type      = 'wordpress'; // WPSP Lite không sử dụng được Schedule của Laravel.
-		$interval  = $interval ?? $this->argument('interval') ?: 'everyMinute';
+		
+		if (class_exists('Illuminate\Console\Scheduling\Schedule')) {
+			$type = $type ?? $this->option('type') ?: 'wordpress';
+		}
+		else {
+			$type = 'wordpress'; // WPSP Lite không sử dụng được Schedule của Laravel.
+		}
+
+		$interval = $interval ?? $this->argument('interval') ?: 'everyMinute';
 
 		// Kiểm tra chuỗi hợp lệ.
 		$this->validateSlug($hook, 'hook');
