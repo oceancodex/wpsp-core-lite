@@ -5,6 +5,7 @@ namespace WPSPCORE;
 use Illuminate\Auth\AuthManager;
 use Illuminate\Console\Application as ConsoleApplication;
 use Illuminate\Container\Container;
+use Illuminate\Contracts\Translation\Loader;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
@@ -18,10 +19,13 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Process\Factory as ProcessFactory;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Timebox;
+use Illuminate\Translation\FileLoader;
+use Illuminate\Translation\Translator;
 use Illuminate\View\Compilers\BladeCompiler;
 use Illuminate\View\Engines\CompilerEngine;
 use Illuminate\View\Engines\EngineResolver;
@@ -237,7 +241,9 @@ abstract class WPSP extends BaseInstances {
 			$this->application->singleton('process', function ($app) { return $app->make(ProcessFactory::class); });
 		}
 		else {
+			$this->application->instance(Request::class, $this->request);
 			$this->application->instance('events', new Dispatcher($this->application));
+
 			$this->application->singleton('blade.compiler', function($app) {
 				return new BladeCompiler($app['files'], $this->funcs->_getStoragePath('/framework/views'));
 			});
@@ -263,6 +269,25 @@ abstract class WPSP extends BaseInstances {
 					$app['events']
 				);
 			});
+			$this->application->alias('view', \Illuminate\Contracts\View\Factory::class);
+			$this->application->alias('view', \Illuminate\View\Factory::class);
+			$this->application->alias('view.finder', \Illuminate\View\ViewFinderInterface::class);
+			$this->application->alias('blade.compiler', \Illuminate\View\Compilers\BladeCompiler::class);
+
+			$this->application->singleton(Loader::class, function ($app) {
+				return new FileLoader(
+					$app->make(Filesystem::class),
+					$this->funcs->_getMainPath('/lang'),
+				);
+			});
+			$this->application->singleton('translator', function ($app) {
+				return new Translator(
+					$app->make(Loader::class),
+					$this->funcs->_locale(),
+				);
+			});
+			$this->application->alias('translator', Translator::class);
+			$this->application->alias('translator', \Illuminate\Contracts\Translation\Translator::class);
 		}
 
 		// Bind "storage" dưới dạng alias để sử dụng được cả "filesystem".
