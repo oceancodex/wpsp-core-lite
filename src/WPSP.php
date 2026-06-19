@@ -23,15 +23,16 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Process\Factory as ProcessFactory;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Session\SessionManager;
 use Illuminate\Support\Timebox;
 use Illuminate\Translation\FileLoader;
 use Illuminate\Translation\Translator;
-use Illuminate\View\Compilers\BladeCompiler;
 use Illuminate\View\Engines\CompilerEngine;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
 use Illuminate\View\FileViewFinder;
 use WPSPCORE\App\Http\Middleware\StartSessionIfAuthenticated;
+use WPSPCORE\App\View\BladeCompiler;
 use WPSPCORE\App\View\Directives\adminpagemetaboxes;
 
 abstract class WPSP extends BaseInstances {
@@ -70,8 +71,11 @@ abstract class WPSP extends BaseInstances {
 				->create();
 
 			$this->setPaths();
+			$this->afterSetPaths();
 			$this->bootstrap();
+			$this->afterBoostrap();
 			$this->bindings();
+			$this->afterBindings();
 			$this->extends();
 
 //			$this->registerBladeDirectives();
@@ -86,7 +90,10 @@ abstract class WPSP extends BaseInstances {
 			$this->application = new Container();
 
 //			$this->bootstrap();
+			$this->afterBoostrap();
 			$this->bindings();
+			$this->afterBindings();
+			$this->extends();
 		}
 	}
 
@@ -110,8 +117,11 @@ abstract class WPSP extends BaseInstances {
 				->create();
 
 			$this->setPaths();
+			$this->afterSetPaths();
 			$this->bootstrapConsole();
+			$this->afterBoostrapConsole();
 			$this->bindingsConsole();
+			$this->afterBindingsConsole();
 			$this->extendsConsole();
 
 			$this->application->boot();
@@ -119,6 +129,7 @@ abstract class WPSP extends BaseInstances {
 		else {
 			$this->application = new Container();
 			$this->bindingsConsole();
+			$this->afterBindingsConsole();
 
 			$this->artisan = new ConsoleApplication(
 				$this->application,
@@ -204,6 +215,10 @@ abstract class WPSP extends BaseInstances {
 		$this->application->useEnvironmentPath($this->mainPath);
 	}
 
+	/*
+	 *
+	 */
+
 	public function bootstrap() {
 		// Environment variables.
 		(new LoadEnvironmentVariables)->bootstrap($this->application);
@@ -233,19 +248,51 @@ abstract class WPSP extends BaseInstances {
 	}
 
 	public function bindings() {
-		$this->application->instance('files', new Filesystem());
+		// Request.
+		$this->application->instance(Request::class, $this->request);
 		$this->application->instance('request', $this->request);
+
+		// Funcs.
 		$this->application->instance('funcs', $this->funcs ?? new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams));
+
+		// Files.
+		$this->application->singleton('files', function () { return new Filesystem(); });
+
+		// Storage và Filesystem.
+		$this->application->singleton('filesystem', function ($app) { return new FilesystemManager($app); });
+		$this->application->alias('filesystem', 'storage');
+		$this->application->alias('filesystem', FilesystemManager::class);
 
 		if (class_exists('Illuminate\Foundation\Application')) {
 			$this->application->singleton('process', function ($app) { return $app->make(ProcessFactory::class); });
 		}
 		else {
-			$this->application->instance(Request::class, $this->request);
-			$this->application->instance('events', new Dispatcher($this->application));
+			// Config.
+			$this->application->singleton('config', function($app) {
+				$configFiles = $this->funcs->_getAllFilesInFolder($this->funcs->_getConfigPath());
+				$configs     = [];
+				foreach ($configFiles as $configFile) {
+					$configs[$configFile['name_without_extension']] = require_once($configFile['real_path']);
+				}
+				return new \Illuminate\Config\Repository($configs);
+			});
 
+			// Event.
+			$this->application->singleton('events', function($app) {
+				return new Dispatcher($app);
+			});
+
+			// Session.
+//			$this->application->singleton('session', function($app) {
+//				return new SessionManager($app);
+//			});
+//			$this->application->singleton('session.store', function($app) {
+//				return $app['session']->driver();
+//			});
+
+			// View.
 			$this->application->singleton('blade.compiler', function($app) {
-				return new BladeCompiler($app['files'], $this->funcs->_getStoragePath('/framework/views'));
+				return new BladeCompiler($app['files'], $this->funcs->_getStoragePath('/framework/views'), $this->funcs);
 			});
 			$this->application->singleton('view.engine.resolver', function($app) {
 				$resolver = new EngineResolver();
@@ -274,27 +321,22 @@ abstract class WPSP extends BaseInstances {
 			$this->application->alias('view.finder', \Illuminate\View\ViewFinderInterface::class);
 			$this->application->alias('blade.compiler', \Illuminate\View\Compilers\BladeCompiler::class);
 
-			$this->application->singleton(Loader::class, function ($app) {
-				return new FileLoader(
-					$app->make(Filesystem::class),
-					$this->funcs->_getMainPath('/lang'),
-				);
-			});
-			$this->application->singleton('translator', function ($app) {
-				return new Translator(
-					$app->make(Loader::class),
-					$this->funcs->_locale(),
-				);
-			});
-			$this->application->alias('translator', Translator::class);
-			$this->application->alias('translator', \Illuminate\Contracts\Translation\Translator::class);
+			// Translation.
+//			$this->application->singleton(Loader::class, function ($app) {
+//				return new FileLoader(
+//					$app->make(Filesystem::class),
+//					$this->funcs->_getMainPath('/lang'),
+//				);
+//			});
+//			$this->application->singleton('translator', function ($app) {
+//				return new Translator(
+//					$app->make(Loader::class),
+//					$this->funcs->_locale(),
+//				);
+//			});
+//			$this->application->alias('translator', Translator::class);
+//			$this->application->alias('translator', \Illuminate\Contracts\Translation\Translator::class);
 		}
-
-		// Bind "storage" dưới dạng alias để sử dụng được cả "filesystem".
-//		$this->application->singleton('storage', function ($app) { return new FilesystemManager($app); });
-		$this->application->singleton('filesystem', function ($app) { return new FilesystemManager($app); });
-		$this->application->alias('filesystem', 'storage');
-		$this->application->alias('filesystem', FilesystemManager::class);
 	}
 
 	public function bindingsConsole() {
@@ -346,6 +388,24 @@ abstract class WPSP extends BaseInstances {
 	}
 
 	public function extendsConsole() {}
+
+	/*
+	 *
+	 */
+
+	public function afterSetPaths() {}
+
+	public function afterBoostrap() {}
+
+	public function afterBoostrapConsole() {}
+
+	public function afterBindings() {}
+
+	public function afterBindingsConsole() {}
+
+	/*
+	 *
+	 */
 
 	public function registerBladeDirectives() {
 		$bladeCompiler = $this->application->make('blade.compiler');
@@ -414,27 +474,29 @@ abstract class WPSP extends BaseInstances {
 	 * Override SessionGuard để thay đổi remember_web_* thành wpsp_remember_web_*
 	 */
 	private function overrideRememberCookieName() {
-		$this->application->afterResolving('auth', function(AuthManager $auth) {
-			$auth->extend('session', function($app, $name, $config) use ($auth) {
-				$provider = $auth->createUserProvider($config['provider']);
+		if (class_exists('Illuminate\Auth\AuthManager')) {
+			$this->application->afterResolving('auth', function(AuthManager $auth) {
+				$auth->extend('session', function($app, $name, $config) use ($auth) {
+					$provider = $auth->createUserProvider($config['provider']);
 
-				$guard = new \WPSPCORE\App\Auth\SessionGuard(
-					$name,
-					$provider,
-					$app['session.store'],
-					$app['request'],
-					$app->make(Timebox::class),
-					true,
-					200000,
-					$app['funcs'] // truyền funcs trực tiếp
-				);
+					$guard = new \WPSPCORE\App\Auth\SessionGuard(
+						$name,
+						$provider,
+						$app['session.store'],
+						$app['request'],
+						$app->make(Timebox::class),
+						true,
+						200000,
+						$app['funcs'] // truyền funcs trực tiếp
+					);
 
-				$guard->setCookieJar($app['cookie']);
-				$guard->setRequest($app['request']);
+					$guard->setCookieJar($app['cookie']);
+					$guard->setRequest($app['request']);
 
-				return $guard;
+					return $guard;
+				});
 			});
-		});
+		}
 	}
 
 }
