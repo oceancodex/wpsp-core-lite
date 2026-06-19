@@ -2,6 +2,7 @@
 
 namespace WPSPCORE;
 
+use Dotenv\Dotenv;
 use Illuminate\Auth\AuthManager;
 use Illuminate\Console\Application as ConsoleApplication;
 use Illuminate\Container\Container;
@@ -264,16 +265,21 @@ abstract class WPSP extends BaseInstances {
 		$this->application->alias('filesystem', FilesystemManager::class);
 
 		if (class_exists('Illuminate\Foundation\Application')) {
+			// Process.
 			$this->application->singleton('process', function ($app) { return $app->make(ProcessFactory::class); });
 		}
 		else {
+			// Env.
+			$dotenv = Dotenv::createImmutable($this->mainPath); $dotenv->safeLoad();
+			$this->application->instance('env', $_ENV);
+
 			// Config.
-			$this->application->singleton('config', function($app) {
-				$configFiles = $this->funcs->_getAllFilesInFolder($this->funcs->_getConfigPath());
-				$configs     = [];
-				foreach ($configFiles as $configFile) {
-					$configs[$configFile['name_without_extension']] = require_once($configFile['real_path']);
-				}
+			$configs     = [];
+			$configFiles = $this->funcs->_getAllFilesInFolder($this->funcs->_getConfigPath());
+			foreach ($configFiles as $configFile) {
+				$configs[$configFile['name_without_extension']] = require_once($configFile['real_path']);
+			}
+			$this->application->singleton('config', function($app) use ($configs) {
 				return new \Illuminate\Config\Repository($configs);
 			});
 
@@ -340,16 +346,44 @@ abstract class WPSP extends BaseInstances {
 	}
 
 	public function bindingsConsole() {
-		$this->application->instance('files', new Filesystem());
+		// Funcs.
 		$this->application->instance('funcs', $this->funcs ?? new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams));
 
+		// Files.
+		$this->application->singleton('files', function () { return new Filesystem(); });
+
+		// Storage và Filesystem.
+		$this->application->singleton('filesystem', function ($app) { return new FilesystemManager($app); });
+		$this->application->alias('filesystem', 'storage');
+		$this->application->alias('filesystem', FilesystemManager::class);
+
 		if (class_exists('Illuminate\Foundation\Application')) {
+			// Process.
 			$this->application->singleton('process', function ($app) { return $app->make(ProcessFactory::class); });
 		}
 		else {
-			$this->application->instance('events', new Dispatcher($this->application));
+			// Env.
+			$dotenv = Dotenv::createImmutable($this->mainPath); $dotenv->safeLoad();
+			$this->application->instance('env', $_ENV);
+
+			// Config.
+			$configs     = [];
+			$configFiles = $this->funcs->_getAllFilesInFolder($this->funcs->_getConfigPath());
+			foreach ($configFiles as $configFile) {
+				$configs[$configFile['name_without_extension']] = require_once($configFile['real_path']);
+			}
+			$this->application->singleton('config', function($app) use ($configs) {
+				return new \Illuminate\Config\Repository($configs);
+			});
+
+			// Event.
+			$this->application->singleton('events', function($app) {
+				return new Dispatcher($app);
+			});
+
+			// View.
 			$this->application->singleton('blade.compiler', function($app) {
-				return new BladeCompiler($app['files'], $this->funcs->_getStoragePath('/framework/views'));
+				return new BladeCompiler($app['files'], $this->funcs->_getStoragePath('/framework/views'), $this->funcs);
 			});
 			$this->application->singleton('view.engine.resolver', function($app) {
 				$resolver = new EngineResolver();
@@ -373,13 +407,27 @@ abstract class WPSP extends BaseInstances {
 					$app['events']
 				);
 			});
-		}
+			$this->application->alias('view', \Illuminate\Contracts\View\Factory::class);
+			$this->application->alias('view', \Illuminate\View\Factory::class);
+			$this->application->alias('view.finder', \Illuminate\View\ViewFinderInterface::class);
+			$this->application->alias('blade.compiler', \Illuminate\View\Compilers\BladeCompiler::class);
 
-		// Bind "storage" dưới dạn alias để sử dụng được cả "filesystem".
-//		$this->application->singleton('storage', function ($app) { return new FilesystemManager($app); });
-		$this->application->singleton('filesystem', function ($app) { return new FilesystemManager($app); });
-		$this->application->alias('filesystem', 'storage');
-		$this->application->alias('filesystem', FilesystemManager::class);
+			// Translation.
+//			$this->application->singleton(Loader::class, function ($app) {
+//				return new FileLoader(
+//					$app->make(Filesystem::class),
+//					$this->funcs->_getMainPath('/lang'),
+//				);
+//			});
+//			$this->application->singleton('translator', function ($app) {
+//				return new Translator(
+//					$app->make(Loader::class),
+//					$this->funcs->_locale(),
+//				);
+//			});
+//			$this->application->alias('translator', Translator::class);
+//			$this->application->alias('translator', \Illuminate\Contracts\Translation\Translator::class);
+		}
 	}
 
 	public function extends() {
