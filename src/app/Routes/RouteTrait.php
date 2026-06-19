@@ -678,7 +678,7 @@ trait RouteTrait {
 		Container::setInstance($container);
 		Facade::setFacadeApplication($container);
 
-		if (class_exists('Illuminate\Database\Eloquent\Model')) {
+		if (class_exists('Illuminate\Foundation\Application')) {
 			Model::setConnectionResolver($container['db']);
 			Model::setEventDispatcher($container['events']);
 		}
