@@ -140,9 +140,11 @@ abstract class WPSP extends BaseInstances {
 			);
 
 			$commands = $this->getCustomCommands();
-
 			foreach ($commands as $command) {
-				$this->artisan->add(new $command);
+				try {
+					$this->artisan->add($this->application->make($command));
+				}
+				catch (\Exception $e) {}
 			}
 		}
 
