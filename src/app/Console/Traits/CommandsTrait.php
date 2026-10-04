@@ -26,15 +26,22 @@ trait CommandsTrait {
 	}
 
 	public function validateClassName($className = null, $inputName = 'name') {
-		if (empty($className) || preg_match('/[^A-Za-z0-9_]/', $className)) {
+		if (empty($className) || @preg_match('/[^A-Za-z0-9_]/', $className)) {
 			$this->error('The '.$inputName.': "' . $className . '" is invalid! Allow characters: A-Z, a-z, 0-9, _');
 			exit();
 		}
 	}
 
 	public function validateSlug($string = null, $inputName = 'slug') {
-		if (empty($string) || preg_match('/[^A-Za-z0-9_-]/', $string)) {
+		if (empty($string) || @preg_match('/[^A-Za-z0-9_-]/', $string)) {
 			$this->error('The '.$inputName.': "' . $string . '" is invalid! Allow characters: A-Z, a-z, 0-9, _ and -');
+			exit();
+		}
+	}
+
+	public function validatePath($path = null, $inputName = 'path') {
+		if (empty($path) || @preg_match('/[^A-Za-z0-9_\/]/', $path)) {
+			$this->error('The '.$inputName.': "' . $path . '" is invalid! Allow characters: A-Z, a-z, 0-9, _, and /');
 			exit();
 		}
 	}

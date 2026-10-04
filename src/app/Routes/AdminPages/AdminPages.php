@@ -43,10 +43,12 @@ class AdminPages extends BaseRoute {
 	public function executeMethod($route) {
 		$request = $this->request;
 
-		$path        = $route->path;
-		$fullPath    = $route->fullPath;
-		$callback    = $route->callback;
-		$middlewares = $route->middlewares;
+		$path          = $route->path;
+		$pathRegex     = $route->pathRegex;
+		$fullPath      = $route->fullPath;
+		$fullPathRegex = $route->fullPathRegex;
+		$callback      = $route->callback;
+		$middlewares   = $route->middlewares;
 
 
 		$screenOptions = $request->get('wp_screen_options');
@@ -55,6 +57,7 @@ class AdminPages extends BaseRoute {
 		}
 
 		$requestPath = ltrim($request->getRequestUri(), '/\\');
+
 		if (
 			(
 				($callback instanceof \Closure)
@@ -67,9 +70,10 @@ class AdminPages extends BaseRoute {
 			)
 			&&
 			(
-				($request->get('page') == $fullPath && preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath))
-				|| preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath)
-				|| preg_match('/' . $fullPath . '/iu', $requestPath)
+				($request->get('page') == $fullPath && @preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath))
+				|| @preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath)
+				|| @preg_match('/' . $fullPath . '/iu', $requestPath)
+				|| @preg_match($fullPathRegex, $requestPath)
 			)
 		) {
 			if ($this->isPassedMiddleware($middlewares, $request, ['route' => $route])) {
@@ -79,8 +83,10 @@ class AdminPages extends BaseRoute {
 					$this->funcs->_getPrefixEnv(),
 					[
 						'path'              => $path,
+						'path_regex'        => $pathRegex,
 						'full_path'         => $fullPath,
-						'callback_function' => $callback[1],
+						'full_path_regex'   => $fullPathRegex,
+						'callback_function' => $callback[1] ?? null,
 					],
 				];
 
@@ -99,14 +105,19 @@ class AdminPages extends BaseRoute {
 				$constructParams[3] = array_merge($constructParams[3], $route->args);
 
 				/**
+				 * Set route resolver.
+				 */
+				$this->setRouteResolver();
+
+				/**
 				 * Thực hiện các công việc với Callback.
 				 * 1. Chuẩn bị callback.
 				 * 2. Chuẩn bị parameters mà callback sử dụng.
 				 * 3. Xử lý callback với parameters (DI).
 				 * 4. Gọi callback.
 				 */
-				$callback        = $this->prepareRouteCallback($callback, $constructParams);
-				$callParams      = $this->getCallParams($path, $fullPath, $requestPath, $callback[0], $callback[1], ['route' => $route]);
+				$callback   = $this->prepareRouteCallback($callback, $constructParams);
+				$callParams = $this->getCallParams($path, $fullPath, $requestPath, $callback[0], $callback[1], ['route' => $route]);
 				$this->resolveAndCall($callback, $callParams);
 			}
 			else {
@@ -143,8 +154,8 @@ class AdminPages extends BaseRoute {
 						|| $callback[1] == 'index'
 						|| (isset($route->args['force_init']) && $route->args['force_init'])
 						|| $request->get('page') == $fullPath
-						|| preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath)
-						|| preg_match('/' . $fullPath . '/iu', $requestPath)
+						|| @preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath)
+						|| @preg_match('/' . $fullPath . '/iu', $requestPath)
 					)
 				)
 			) {
@@ -224,7 +235,12 @@ class AdminPages extends BaseRoute {
 					else {
 						// Nếu method của callback không phải index, hoặc không force_init, đây không phải route khởi tạo admin page.
 						if ((isset($callback[1]) && is_string($callback[1]) && $callback[1] !== 'index') && (!isset($route->args['force_init']))) {
-							if (preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath)) {
+							if (@preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath)) {
+								/**
+								 * Set route resolver.
+								 */
+								$this->setRouteResolver();
+
 								/**
 								 * Thực hiện các công việc với Callback.
 								 * 1. Chuẩn bị callback.
@@ -247,6 +263,11 @@ class AdminPages extends BaseRoute {
 							if (isset($callback[1]) && $callback[1] == 'index' || !isset($callback[1]) || isset($route->args['force_init'])) $callback[1] = 'init';
 
 							/**
+							 * Set route resolver.
+							 */
+							$this->setRouteResolver();
+
+							/**
 							 * Thực hiện các công việc với Callback.
 							 * 1. Chuẩn bị callback.
 							 * 2. Chuẩn bị parameters mà callback sử dụng.
@@ -259,7 +280,7 @@ class AdminPages extends BaseRoute {
 						}
 					}
 				}
-				elseif (preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath)) {
+				elseif (@preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath)) {
 					wp_die(
 						'<h1>ERROR: 403 - Access denied</h1>' .
 						'<p>You are not allowed to access this page.</p>',

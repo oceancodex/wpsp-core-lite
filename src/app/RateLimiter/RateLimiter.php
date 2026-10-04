@@ -2,26 +2,28 @@
 
 namespace WPSPCORE\App\RateLimiter;
 
+use Illuminate\Cache\RateLimiter as IlluminateRateLimiter;
 use Illuminate\Cache\CacheManager;
 use WPSPCORE\BaseInstances;
 
+/**
+ * @mixin \Illuminate\Support\Facades\RateLimiter
+ */
 abstract class RateLimiter extends BaseInstances {
 
-	private \Illuminate\Cache\RateLimiter $rateLimiter;
+	private ?IlluminateRateLimiter $facade;
 
 	/*
 	 *
 	 */
 
-	public function getRateLimiter(): \Illuminate\Cache\RateLimiter {
-		return $this->rateLimiter;
+	public function getFacade(): ?IlluminateRateLimiter {
+		return $this->facade;
 	}
 
-	public function setRateLimiter() {
+	public function setFacade() {
 		/** @var CacheManager $cacheManager */
-		$cacheManager      = $this->funcs->_getApplication('cache');
-		$cacheStore        = $cacheManager->store();
-		$this->rateLimiter = new \Illuminate\Cache\RateLimiter($cacheStore);
+		$this->facade = $this->funcs->_getApplication(IlluminateRateLimiter::class);
 	}
 
 	/*
@@ -33,12 +35,14 @@ abstract class RateLimiter extends BaseInstances {
 	}
 
 	public static function __callStatic($method, $arguments) {
-		if (method_exists(static::instance(), $method)) {
-			return static::instance()->$method(...$arguments);
+		$instance = static::wpspInstance();
+
+		$underlineMethod = '_' . $method;
+		if (method_exists($instance, $underlineMethod)) {
+			return $instance->$underlineMethod(...$arguments);
 		}
-		else {
-			return static::instance()->getRateLimiter()->$method(...$arguments);
-		}
+
+		return $instance->getFacade()?->$method(...$arguments);
 	}
 
 }

@@ -53,13 +53,13 @@ class MakeCustomizeCommand extends Command {
 		$this->validateSlug($name);
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className   = Str::slug($name, '_');
-		$createView  = $createView ?? $this->option('view');
+		$className  = preg_replace('/[^A-Za-z0-9_]/', '_', $name);
+		$createView = $createView ?? $this->option('view');
 
 		// Kiểm tra tồn tại.
-		$classPath = $mainPath . '/app/WordPress/Customizers/' . $className . '/' . $className . '.php';
+		$classPath               = $mainPath . '/app/WordPress/Customizers/' . $className . '/' . $className . '.php';
 		$exampleControlViewPath  = $mainPath . '/resources/views/customizers/' . $className . '/controls/example-control.blade.php';
-		$exampleControlClassPath  = $mainPath . '/app/WordPress/Customizers/' . $className . '/Controls/ExampleControl.php';
+		$exampleControlClassPath = $mainPath . '/app/WordPress/Customizers/' . $className . '/Controls/ExampleControl.php';
 
 		if (File::exists($classPath)) {
 			$this->error('Customize: "' . $name . '" already exists! Please try again.');

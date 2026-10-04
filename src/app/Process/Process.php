@@ -2,27 +2,26 @@
 
 namespace WPSPCORE\App\Process;
 
-use Illuminate\Process\Factory;
+use Illuminate\Process\Factory as IlluminateProcess;
 use WPSPCORE\BaseInstances;
 
 /**
- * @mixin \Illuminate\Process\Factory
  * @mixin \Illuminate\Support\Facades\Process
  */
 abstract class Process extends BaseInstances {
 
-	private Factory $process;
+	private ?IlluminateProcess $facade;
 
 	/*
 	 *
 	 */
 
-	public function getProcess(): Factory {
-		return $this->process;
+	public function getFacade(): ?IlluminateProcess {
+		return $this->facade;
 	}
 
-	public function setProcess() {
-		$this->process = $this->funcs->_getApplication('process');
+	public function setFacade() {
+		$this->facade = $this->funcs->_getApplication('process');
 	}
 
 	/*
@@ -34,14 +33,14 @@ abstract class Process extends BaseInstances {
 	}
 
 	public static function __callStatic($method, $arguments) {
-		$instance = static::instance();
+		$instance = static::wpspInstance();
 
 		$underlineMethod = '_' . $method;
 		if (method_exists($instance, $underlineMethod)) {
 			return $instance->$underlineMethod(...$arguments);
 		}
 
-		return $instance->getProcess()->$method(...$arguments);
+		return $instance->getFacade()?->$method(...$arguments);
 	}
 
 }

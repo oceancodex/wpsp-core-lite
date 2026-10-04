@@ -1,0 +1,73 @@
+<?php
+
+namespace {{ root_namespace }}\App\WordPress\NavigationMenus\Menus;
+
+use Illuminate\Http\Request;
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ core_namespace }}\App\WordPress\NavigationMenus\Menus\BaseNavigationMenu;
+
+class {{ class_name }} extends BaseNavigationMenu {
+
+	use InstancesTrait;
+
+	// Args.
+//	public $menu                 = '{{ name }}';
+//	public $menu_class           = '';
+//	public $menu_id              = '';            // The "id" attribute of the <ul> element.
+//	public $container            = '';
+//	public $container_class      = '';
+//	public $container_id         = '';
+//	public $container_aria_label = '';
+//	public $fallback_cb          = false;         // If the menu doesn’t exist, a callback function will fire.
+//	public $before               = '';
+//	public $after                = '';
+//	public $link_before          = '';
+//	public $link_after           = '';
+//	public $echo                 = true;
+//	public $depth                = 0;
+//	public $walker               = null;
+//	public $theme_location       = '';
+//	public $items_wrap           = '';
+//	public $item_spacing         = '';            // 'preserve' or 'discard'
+
+	/*
+	 *
+	 */
+
+	/**
+	 * Trong "__wpspConstruct", tất cả params với type là Class hợp lệ\
+	 * đều được sử dụng để tạo properties tự động.
+	 */
+//	public function __wpspConstruct() {}
+
+//	public function __instanceConstruct(Request $request) {}
+
+	/*
+	 *
+	 */
+
+	public function customProperties(Request $request) {
+		$this->fallback_cb = $this->fallback();
+	}
+
+	/*
+	 *
+	 */
+
+	public function render() {
+		// Code here...
+
+		return parent::renderNavMenu();
+	}
+
+	/*
+	 *
+	 */
+
+	public function fallback() {
+		return function () {
+			return '{{ name }} fallback...';
+		};
+	}
+
+}

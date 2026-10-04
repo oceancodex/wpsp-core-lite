@@ -25,7 +25,7 @@ class MakeAPICommand extends Command {
 		 * Funcs.
 		 * ---
 		 */
-		$this->funcs = $this->getLaravel()->make('funcs');
+		$this->funcs  = $this->getLaravel()->make('funcs');
 		$appShortName = $this->funcs->_getAppShortName();
 
 		/**
@@ -52,10 +52,10 @@ class MakeAPICommand extends Command {
 		}
 
 		// Kiểm tra chuỗi hợp lệ.
-		$this->validateSlug($path, 'path');
+		$this->validatePath($path, 'path');
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className = Str::slug($path, '_');
+		$className = preg_replace('/[^A-Za-z0-9_]/', '_', $path);
 		$method    = strtolower($method ?? $this->option('method') ?: 'GET');
 		$namespace = $namespace ?? $this->option('namespace') ?: null;
 		$version   = $version ?? $this->option('ver') ?: null;

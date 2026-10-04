@@ -4,6 +4,7 @@ namespace WPSPCORE\App\Database;
 
 use Illuminate\Contracts\Console\Kernel as ArtisanKernel;
 use Illuminate\Filesystem\Filesystem;
+use WPSPCORE\App\Traits\BaseInstancesTrait;
 use WPSPCORE\BaseInstances;
 
 /**
@@ -11,6 +12,8 @@ use WPSPCORE\BaseInstances;
  * Tương thích PHP 7.4
  */
 class Migration extends BaseInstances {
+
+	use BaseInstancesTrait;
 
 	protected $migrationTable = 'migrations';
 	protected $migrationPath;
@@ -20,8 +23,7 @@ class Migration extends BaseInstances {
 	 */
 
 	public function afterConstruct() {
-		$app                 = $this->funcs->_getApplication();
-		$this->migrationPath = $app->basePath('database/migrations');
+		$this->migrationPath = $this->funcs->_getMigrationPath();
 
 		// Set lại Container và Facades.
 //		Container::setInstance($app);
@@ -66,15 +68,15 @@ class Migration extends BaseInstances {
 	 * Chạy migrate()
 	 */
 	public function migrate($seed = false) {
-		$app     = $this->funcs->_getApplication();
-		$artisan = $app->make(ArtisanKernel::class);
-		$missing = $this->getMissingMigrationVersions();
-
-		if (empty($missing)) {
-			return ['success' => true, 'data' => null, 'message' => 'Database is now in latest version.'];
-		}
-
 		try {
+			$app     = $this->funcs->_getApplication();
+			$artisan = $app->make(ArtisanKernel::class);
+			$missing = $this->getMissingMigrationVersions();
+
+			if (empty($missing)) {
+				return ['success' => true, 'data' => null, 'message' => 'Database is now in latest version.'];
+			}
+
 			$artisan->call('migrate', [
 //				'--path'     => $this->migrationPath,
 //				'--realpath' => true,
@@ -121,7 +123,7 @@ class Migration extends BaseInstances {
 
 		foreach ($files as $file) {
 			$content = $fs->get($file->getPathname());
-			if (preg_match_all('/(?:->|::)create\s*\(\s*[\'"]([^\'"]+)[\'"]/i', $content, $matches)) {
+			if (@preg_match_all('/(?:->|::)create\s*\(\s*[\'"]([^\'"]+)[\'"]/i', $content, $matches)) {
 				foreach ($matches[1] as $table) {
 					$defined[] = $table;
 				}
@@ -195,9 +197,9 @@ class Migration extends BaseInstances {
 	 */
 	public function checkDatabaseVersionNewest() {
 		$app    = $this->funcs->_getApplication();
-		$schema = $app['db']->connection()->getSchemaBuilder();
+		$schema = $app->bound('db') ? $app['db']->connection()->getSchemaBuilder() : null;
 
-		if (!$schema->hasTable($this->migrationTable)) {
+		if (!$schema?->hasTable($this->migrationTable)) {
 			return [
 				'result' => false,
 				'type'   => 'check_database_version_newest',
@@ -205,7 +207,7 @@ class Migration extends BaseInstances {
 			];
 		}
 
-		$missing = $this->getMissingMigrationVersions();
+		$missing = $this->getMissingMigrationVersions(true);
 
 		return [
 			'result'           => empty($missing),
@@ -319,7 +321,7 @@ class Migration extends BaseInstances {
 	/**
 	 * Lấy danh sách file migration chưa có trong DB
 	 */
-	protected function getMissingMigrationVersions() {
+	protected function getMissingMigrationVersions($hasMigrationsTable = false) {
 		$app    = $this->funcs->_getApplication();
 		$schema = $app['db']->connection()->getSchemaBuilder();
 		$db     = $app['db'];
@@ -332,7 +334,7 @@ class Migration extends BaseInstances {
 			}
 		}
 
-		if (!$schema->hasTable($this->migrationTable)) {
+		if (!$hasMigrationsTable && !$schema->hasTable($this->migrationTable)) {
 			$executed = [];
 		}
 		else {

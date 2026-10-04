@@ -1,1 +1,1 @@
-# WordPress Starter Plugin - Core - Lite
+# WPSP Framework - WordPress Starter Plugin - Core - Lite

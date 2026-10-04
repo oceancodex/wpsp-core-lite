@@ -1,0 +1,270 @@
+<?php
+
+namespace {{ root_namespace }}\App\WordPress\AdminPages;
+
+use Illuminate\Http\Request;
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ root_namespace }}\Funcs;
+use {{ core_namespace }}\App\WordPress\AdminPages\BaseAdminPage;
+
+class {{ class_name }} extends BaseAdminPage {
+
+	use InstancesTrait;
+
+	/**
+	 * WordPress admin page properties.
+	 */
+	public $menu_title             = '{{ path }}';
+//	public $page_title             = '{{ path }}'; // Thẻ <title>, chỉ hoạt động khi menu_slug theo chuẩn WordPress.
+	public $capability             = 'manage_options';
+//	public $menu_slug              = '{{ path }}';
+	public $icon_url               = 'dashicons-admin-generic';
+//	public $position               = 2;
+	public $parent_slug            = {{ parent }};
+
+	/**
+	 * Parent properties.
+	 */
+//	public $forceInit			   = false;
+//	public $forceInitSlug          = null; // Nếu bạn đăng ký một route: "custom_page&edit=(.*?)" mà chưa có route khởi tạo "custom_page", hãy điền "custom_page" ở đây để ép khởi tạo admin page trước.
+
+//	public $classes                = null; // Thêm HTML class vào attribute "class" của admin menu item.
+//	public $firstSubmenuTitle      = null; // WordPress sẽ tự sinh submenu cho trang chính. Thay đổi tên submenu tự sinh.
+//	public $firstSubmenuClasses    = null; // WordPress sẽ tự sinh submenu cho trang chính. Thêm class cho submenu tự sinh.
+	public $isSubmenuPage          = {{ child }};
+//	public $removeFirstSubmenu     = true; // WordPress sẽ tự sinh submenu cho trang chính. Xóa submenu tự sinh.
+
+//	public $showScreenOptions      = true;
+//	public $screenBase			   = null;
+//	public $screenId			   = null;
+//	public $pagenow				   = null;
+//	public $itemsPerPageKey		   = null;	// Tùy chỉnh key được sử dụng để lưu option "items per page" trên Screen Options Panel.
+
+//	public $urlsMatchCurrentAccess = [];
+//	public $urlsMatchHighlightMenu = [];
+
+//	public $adminPageMetaBoxes     = [];
+
+//	public $callback_function	   = false;
+
+	/**
+	 * Custom properties.
+	 */
+	private $currentTab            = null;
+	private $currentPage           = null;
+//	private $table                 = null;
+//	private $checkDatabase         = null;
+
+	/*
+	 *
+	 */
+
+	/**
+	 * Trong "__wpspConstruct", tất cả params với type là Class hợp lệ\
+	 * đều được sử dụng để tạo properties tự động.
+	 */
+//	public function __wpspConstruct(
+//		TestService $testService
+//	) {}
+
+//	public function __instanceConstruct(TestService $testService) {
+//		$this->page_title = $testService->test();
+//	}
+
+	/**
+	 * Tùy biến những thuộc tính chuyên sâu\
+	 * hoặc khởi tạo các thuộc tính để tái sử dụng trong toàn bộ class.
+	 */
+	public function customProperties() {
+		/**
+		 * Xác định xem menu này sẽ được highlight khi truy cập bất cứ URL nào hay không.\
+		 * Nếu URL hiện tại khớp với một trong các item của mảng thì menu này sẽ được highlight.
+		 */
+		$this->urlsMatchHighlightMenu = [
+//			'admin.php?page={{ path }}',
+		];
+
+		/**
+		 * Xác định xem menu này có đang thực sự được truy cập hay không.\
+		 * Nếu URL hiện tại khớp với một trong các item của mảng thì menu này xem như\
+		 * đang được truy cập thực sự:
+		 * - Khi đó các cài đặt liên quan đến screen options sẽ được thực thi.
+		 * - Khi đó phương thức "matchedCurrentAccess" tại đây sẽ được thực thi.
+		 *
+		 * Cần phải làm điều này để thực thi những công việc mà chỉ menu này cần.\
+		 * Chấp nhận String hoặc Regex.
+		 */
+		$this->urlsMatchCurrentAccess = [
+//			'/admin\.php\?page={{ path }}/iu',
+		];
+
+		/**
+		 * Định nghĩa các metaboxes sẽ được hiển thị trong admin page.
+		 */
+//		$this->adminPageMetaBoxes = $this->adminPageMetaBoxes();
+
+		/**
+		 * Định nghĩa screen option key duy nhất dựa theo params trong URL.\
+		 * Ví dụ: page=wpsp&tab=list => wpsp_page_wpsp_tab_list\
+		 * Như vậy thì screen options sẽ độc lập giữa các page.
+		 */
+//		$this->screenId = $this->funcs->_slugParams(['page', 'tab']);
+
+		/**
+		 * Ghi đè "pagenow" để gửi Ajax sắp xếp lại các metaboxes trong admin page\
+		 * và screen layout columns.
+		 */
+//		$this->pagenow = $this->funcs->_slugParams(['page', 'tab']);
+
+		/**
+		 * Lấy các parameters từ URL để tái sử dụng trong Class này.
+		 */
+		$this->currentTab  = $this->request->get('tab');
+		$this->currentPage = $this->request->get('page');
+		$this->page_title  = ($this->currentTab ? Funcs::trans('messages.' . $this->currentTab) : Funcs::trans('messages.{{ path }}')) . ' - ' . Funcs::config('app.name');
+	}
+
+	/*
+	 *
+	 */
+
+//	public function init($path = null) {
+//		// You must call to parent method "init" if you want to custom it.
+//		parent::init();
+//
+//      // Your code here...
+//	}
+
+//	public function beforeInit() {}
+
+//	public function afterAddAdminPage($adminPage) {}
+
+//	public function beforeLoadAdminPage($adminPage) {}
+
+//	public function beforeInLoadAdminPage($adminPage) {}
+
+//	public function afterInLoadAdminPage($adminPage) {}
+
+//	public function afterLoadAdminPage($adminPage) {}
+
+//	public function matchedCurrentAccess() {}
+
+//	public function afterInit() {}
+
+	/*
+	 *
+	 */
+
+//	public function adminPageMetaBoxes() {
+//		return [
+//			'side' => [
+//				'submitdiv' => [
+//					'title' => 'Submit',
+//					'view'  => 'admin-pages.wpsp.settings.submit',
+//				],
+//			],
+//			'normal' => [
+//				'inputsdiv' => [
+//					'title' => 'Settings',
+//					'view'  => 'admin-pages.wpsp.settings.inputs',
+//				],
+//			],
+//			'advanced' => [],
+//		];
+//	}
+
+	/*
+	 *
+	 */
+
+	public function index(Request $request) {
+		$requestParams = $request->all();
+		$menuSlug      = $this->menu_slug;
+        echo Funcs::view('admin-pages.{{ path }}.main', compact('requestParams', 'menuSlug'));
+	}
+
+	public function create(Request $request) {}
+
+	public function store(Request $request) {}
+
+	public function show(Request $request, $id) {}
+
+	public function edit(Request $request, $id) {}
+
+	public function update(Request $request, $id) {}
+
+	public function destroy(Request $request, $id) {}
+
+	public function forceDestroy(Request $request, $id) {}
+
+	/*
+	 *
+	 */
+
+	public function styles() {
+//		wp_enqueue_style(
+//			Funcs::config('app.short_name') . '-admin-css',
+//			Funcs::instance()->_getPublicUrl() . '/css/admin.min.css',
+//			null,
+//			Funcs::instance()->_getVersion()
+//		);
+//		wp_enqueue_style(
+//			Funcs::config('app.short_name') . '-toastr',
+//			Funcs::instance()->_getPublicUrl('/widen/plugins/toastr/css/toastr.min.css'),
+//			null,
+//			Funcs::instance()->_getVersion()
+//		);
+//		wp_enqueue_style(
+//			Funcs::config('app.short_name') . '-bootstrap-grid',
+//			Funcs::instance()->_getPublicUrl() . '/widen/plugins/bootstrap/css/bootstrap-grid.min.css',
+//			null,
+//			Funcs::instance()->_getVersion()
+//		);
+//		wp_enqueue_style(
+//			Funcs::config('app.short_name') . '-bootstrap-table',
+//			Funcs::instance()->_getPublicUrl('widen/plugins/bootstrap/css/bootstrap-table.min.css'),
+//			null,
+//			Funcs::instance()->_getVersion()
+//		);
+//		wp_enqueue_style(
+//			Funcs::config('app.short_name') . '-bootstrap-formcontrol',
+//			Funcs::instance()->_getPublicUrl('widen/plugins/bootstrap/css/bootstrap-formcontrol.min.css'),
+//			null,
+//			Funcs::instance()->_getVersion()
+//		);
+//		wp_enqueue_style(
+//			Funcs::config('app.short_name') . '-bootstrap-utilities',
+//			Funcs::instance()->_getPublicUrl() . '/widen/plugins/bootstrap/css/bootstrap-utilities.min.css',
+//			null,
+//			Funcs::instance()->_getVersion()
+//		);
+	}
+
+	public function scripts() {
+//		wp_enqueue_script(
+//			Funcs::config('app.short_name') . '-toastr',
+//			Funcs::instance()->_getPublicUrl('widen/plugins/toastr/js/toastr.min.js'),
+//			null,
+//			Funcs::instance()->_getVersion()
+//		);
+//		wp_enqueue_script(
+//			Funcs::config('app.short_name') . '-database',
+//			Funcs::instance()->_getPublicUrl() . '/ts/web/admin-pages/wpsp/Database.min.js',
+//			null,
+//			Funcs::instance()->_getVersion()
+//		);
+	}
+
+	public function localizeScripts() {
+//		wp_localize_script(
+//			Funcs::config('app.short_name') . '-database',
+//			Funcs::config('app.short_name') . '_localize',
+//			[
+//				'ajax_url'   => admin_url('admin-ajax.php'),
+//				'nonce'      => wp_create_nonce(Funcs::config('app.short_name')),
+//				'public_url' => Funcs::instance()->_getPublicUrl(),
+//			]
+//		);
+	}
+
+}

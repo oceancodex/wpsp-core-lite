@@ -53,13 +53,13 @@ class MakeWidgetCommand extends Command {
 		$this->validateSlug($id_base);
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className  = Str::slug($id_base, '_');
+		$className  = preg_replace('/[^A-Za-z0-9_]/', '_', $id_base);
 		$createView = $createView ?? $this->option('view');
 
 		// Kiểm tra tồn tại.
-		$classPath = $mainPath . '/app/WordPress/Widgets/' . $className . '.php';
-		$formViewPath  = $mainPath . '/resources/views/widgets/' . $id_base . '/form.blade.php';
-		$widgetViewPath  = $mainPath . '/resources/views/widgets/' . $id_base . '/widget.blade.php';
+		$classPath      = $mainPath . '/app/WordPress/Widgets/' . $className . '.php';
+		$formViewPath   = $mainPath . '/resources/views/widgets/' . $id_base . '/form.blade.php';
+		$widgetViewPath = $mainPath . '/resources/views/widgets/' . $id_base . '/widget.blade.php';
 
 		if (File::exists($classPath)) {
 			$this->error('Widget: "' . $id_base . '" already exists! Please try again.');

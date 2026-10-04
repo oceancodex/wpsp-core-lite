@@ -49,7 +49,7 @@ class MakeWPRoleCommand extends Command {
 		$this->validateSlug($name);
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className  = Str::slug($name, '_');
+		$className = preg_replace('/[^A-Za-z0-9_]/', '_', $name);
 
 		// Kiểm tra tồn tại.
 		$path = $mainPath . '/app/WordPress/WPRoles/' . $className . '.php';
@@ -64,7 +64,7 @@ class MakeWPRoleCommand extends Command {
 		 * Class.
 		 * ---
 		 */
-		$content = File::get(__DIR__ . '/../Stubs/WPRoles/wprole.stub');
+		$content = File::get(__DIR__ . '/../Stubs/WPRoles/wp-role.stub');
 		$content = str_replace(
 			['{{ class_name }}', '{{ name }}'],
 			[$className, $name],
@@ -80,7 +80,7 @@ class MakeWPRoleCommand extends Command {
 		 * Function.
 		 * ---
 		 */
-		$func = File::get(__DIR__ . '/../Funcs/WPRoles/wprole.func');
+		$func = File::get(__DIR__ . '/../Funcs/WPRoles/wp-role.func');
 		$func = str_replace(
 			['{{ class_name }}', '{{ name }}'],
 			[$className, $name],
@@ -92,7 +92,7 @@ class MakeWPRoleCommand extends Command {
 		 * Use.
 		 * ---
 		 */
-		$use = File::get(__DIR__ . '/../Uses/WPRoles/wprole.use');
+		$use = File::get(__DIR__ . '/../Uses/WPRoles/wp-role.use');
 		$use = str_replace(
 			['{{ class_name }}', '{{ name }}'],
 			[$className, $name],

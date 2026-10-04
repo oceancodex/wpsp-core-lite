@@ -2,27 +2,26 @@
 
 namespace WPSPCORE\App\Database;
 
-use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\DatabaseManager as IlluminateDB;
 use WPSPCORE\BaseInstances;
 
 /**
- * @mixin \Illuminate\Database\DatabaseManager
  * @mixin \Illuminate\Support\Facades\DB
  */
 abstract class DB extends BaseInstances {
 
-	private DatabaseManager $db;
+	private ?IlluminateDB $facade;
 
 	/*
 	 *
 	 */
 
-	public function getDB(): DatabaseManager {
-		return $this->db;
+	public function getFacade(): ?IlluminateDB {
+		return $this->facade;
 	}
 
-	public function setDB() {
-		$this->db = $this->funcs->_getApplication('db');
+	public function setFacade() {
+		$this->facade = $this->funcs->_getApplication('db');
 	}
 
 	/*
@@ -34,14 +33,14 @@ abstract class DB extends BaseInstances {
 	}
 
 	public static function __callStatic($method, $arguments) {
-		$instance = static::instance();
+		$instance = static::wpspInstance();
 
 		$underlineMethod = '_' . $method;
 		if (method_exists($instance, $underlineMethod)) {
 			return $instance->$underlineMethod(...$arguments);
 		}
 
-		return $instance->getDB()->$method(...$arguments);
+		return $instance->getFacade()?->$method(...$arguments);
 	}
 
 }

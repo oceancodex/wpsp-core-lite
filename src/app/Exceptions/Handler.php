@@ -1,6 +1,12 @@
 <?php
+
 namespace WPSPCORE\App\Exceptions;
 
+use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Facade;
+use WPSPCORE\App\Exceptions\Renderer as WPSPRenderer;
+use WPSPCORE\App\Routes\RouteManager;
 use WPSPCORE\BaseInstances;
 
 class Handler extends BaseInstances {
@@ -44,7 +50,7 @@ class Handler extends BaseInstances {
 			}
 			catch (\Throwable $renderException) {
 				// Nếu render() gặp lỗi, fallback sang Ignition
-				$this->fallbackToIgnition($e);
+				$this->fallbackException($e);
 			}
 		}
 	}
@@ -96,7 +102,7 @@ class Handler extends BaseInstances {
 		}
 
 		wp_die(
-			'<h1>ERROR: 500</h1><p>' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . '</p>',
+			'<h1>ERROR: 500</h1><p>'.$e->getMessage().' in <strong>'.$e->getFile().':'.$e->getLine().'</strong></p><pre>'.$e->getTraceAsString().'</pre>',
 			'ERROR: 500',
 			[
 				'response'  => 500,
@@ -130,28 +136,24 @@ class Handler extends BaseInstances {
 		exit;
 	}
 
-	public function fallbackToIgnition(\Throwable $e) {
+	public function fallbackException(\Throwable $e) {
 		$app = $this->funcs->_getApplication();
 
-		// 1) Nếu Laravel 12+ Renderer class tồn tại và container có thể make nó
-		if (class_exists(\Illuminate\Foundation\Exceptions\Renderer\Renderer::class) && $app && $app->bound(\Illuminate\Foundation\Exceptions\Renderer\Renderer::class)) {
+		// 1) Ưu tiên dùng Exception Handler của Laravel 12+.
+		// Chỉ chạy renderer nếu cấu hình debug của CHÍNH container hiện tại đang bật
+		if ($app && $this->funcs->_config('app.debug') && class_exists(WPSPRenderer::class)) {
+			// Ép Laravel nhận diện lại đúng Application Container hiện tại của plugin này
+			Container::setInstance($app);
+			Facade::setFacadeApplication($app);
+			Model::setConnectionResolver($app['db']);
+			Model::setEventDispatcher($app['events']);
+
 			try {
-				// Resolve request (nếu không có, tự tạo Request::capture())
-				$request = null;
-				if ($app->bound('request')) {
-					$request = $app->make('request');
-				}
-				else {
-					$request = \Illuminate\Http\Request::capture();
-				}
+				$currentPluginPath = $this->funcs->_getPluginDirPathFromPath($e->getFile());
+				$request           = $this->request ?? $app->make('request') ?? \Illuminate\Http\Request::capture();
+				$renderer          = $app->make(WPSPRenderer::class, ['basePath' => $currentPluginPath]);
+				$response          = $renderer->render($request, $e, $this->funcs->_getRouteManager());
 
-				// Ask container to build Renderer with its dependencies
-				$renderer = $app->make(\Illuminate\Foundation\Exceptions\Renderer\Renderer::class);
-
-				// render() expects (Request, Throwable) and returns a Symfony Response or string
-				$response = $renderer->render($request, $e);
-
-				// If response is a Response object, getContent()
 				if (is_object($response) && method_exists($response, 'getContent')) {
 					$content = $response->getContent();
 					$status  = method_exists($response, 'getStatusCode') ? $response->getStatusCode() : 500;
@@ -161,50 +163,25 @@ class Handler extends BaseInstances {
 						echo $content;
 						exit;
 					}
-					else {
-						// Log for debugging why renderer returned empty
-						error_log('[WPSP] Renderer returned empty content for exception: ' . get_class($e) . ': ' . $e->getMessage());
-					}
 				}
-				// If it's a string, print it
 				elseif (is_string($response) && trim($response) !== '') {
 					echo $response;
 					exit;
 				}
 			}
-			catch (\Throwable $renderEx) {
-				// Log renderer failure then continue to fallback
-				error_log('[WPSP] Renderer threw: ' . $renderEx->getMessage());
+			catch (\Throwable $renderException) {
+				// Nếu quá trình render lỗi bằng Blade gặp trục trặc (như lỗi "No hint path"),
+				// âm thầm fallback xuống cơ chế an toàn tiếp theo dưới đây
 			}
 		}
 
-		// 2) Nếu có Ignition -> dùng Ignition
-		if (class_exists('\Spatie\LaravelIgnition\Ignition')) {
-			try {
-				\Spatie\LaravelIgnition\Ignition::make()
-					->shouldDisplayException(true)
-					->register()
-					->renderException($e);
-				exit;
-			}
-			catch (\Throwable $ignEx) {
-				error_log('[WPSP] Ignition threw: ' . $ignEx->getMessage());
-				// fallthrough
-			}
-		}
-
-		// 3) Nếu tồn tại handler trước đó thì gọi lại
+		// 2) Nếu tồn tại handler trước đó của WordPress/Plugin khác thì gọi lại.
 		if ($this->existsExceptionHandler && is_callable($this->existsExceptionHandler)) {
-			try {
-				call_user_func($this->existsExceptionHandler, $e);
-				return;
-			}
-			catch (\Throwable $hEx) {
-				error_log('[WPSP] Previous exception handler threw: ' . $hEx->getMessage());
-			}
+			call_user_func($this->existsExceptionHandler, $e);
+			return;
 		}
 
-		// 4) Cuối cùng fallback về prepareResponse (wp_die / json)
+		// 3) Nếu không có handler nào, fallback về "wp_die" hoặc JSON response an toàn.
 		$this->prepareResponse($e);
 	}
 
@@ -261,7 +238,7 @@ class Handler extends BaseInstances {
 
 		// Sử dụng wp_die.
 		wp_die(
-			'<h1>ERROR: 401 - Chưa xác thực</h1><p>' . $message . '</p>',
+			'<h1>ERROR: 401 - Chưa xác thực</h1><p>'.$message.'</p>',
 			'ERROR: 401 - Chưa xác thực',
 			[
 				'response'  => 401,
@@ -308,7 +285,7 @@ class Handler extends BaseInstances {
 
 		// Sử dụng wp_die.
 		wp_die(
-			'<h1>ERROR: 403 - Truy cập bị từ chối</h1><p>' . $message . '</p>',
+			'<h1>ERROR: 403 - Truy cập bị từ chối</h1><p>'.$message.'</p>',
 			'ERROR: 403 - Truy cập bị từ chối',
 			[
 				'response'  => 403,
@@ -381,8 +358,8 @@ class Handler extends BaseInstances {
 
 		// Sử dụng wp_die.
 		wp_die(
-			'<h1>ERROR: ' . $statusCode . ' - Lỗi HTTP</h1><p>' . $message . '</p>',
-			'ERROR: ' . $statusCode . ' - Lỗi HTTP',
+			'<h1>ERROR: '.$statusCode.' - Lỗi HTTP</h1><p>'.$message.'</p>',
+			'ERROR: '.$statusCode.' - Lỗi HTTP',
 			[
 				'response'  => $statusCode,
 				'back_link' => true,
@@ -412,7 +389,7 @@ class Handler extends BaseInstances {
 
 		// Debug mode.
 		if ($this->funcs->_isDebug()) {
-			$this->fallbackToIgnition($e);
+			$this->fallbackException($e);
 		}
 
 		// Production mode.
@@ -423,7 +400,7 @@ class Handler extends BaseInstances {
 			// Tạo danh sách lỗi HTML.
 			$errorList = '<ul>';
 			foreach ($errors as $error) {
-				$errorList .= '<li>' . $error . '</li>';
+				$errorList .= '<li>'.$error.'</li>';
 			}
 			$errorList .= '</ul>';
 
@@ -442,7 +419,7 @@ class Handler extends BaseInstances {
 
 			// Sử dụng wp_die.
 			wp_die(
-				'<h1>ERROR: 422 - Dữ liệu không hợp lệ</h1><p>' . $errorList . '</p>',
+				'<h1>ERROR: 422 - Dữ liệu không hợp lệ</h1><p>'.$errorList.'</p>',
 				'ERROR: 422 - Dữ liệu không hợp lệ',
 				[
 					'response'  => 422,
@@ -493,7 +470,7 @@ class Handler extends BaseInstances {
 
 		// Sử dụng wp_die.
 		wp_die(
-			'<h1>ERROR: 404 - Không tìm thấy bản ghi</h1><p>' . esc_html($message) . '</p>',
+			'<h1>ERROR: 404 - Không tìm thấy bản ghi</h1><p>'.esc_html($message).'</p>',
 			'ERROR: 404 - Không tìm thấy bản ghi',
 			[
 				'response'  => 404,
@@ -572,7 +549,7 @@ class Handler extends BaseInstances {
 
 			// Sử dụng wp_die.
 			wp_die(
-				'<h1>ERROR: 500 - Lỗi truy vấn cơ sở dữ liệu</h1><p>' . $message . '</p>',
+				'<h1>ERROR: 500 - Lỗi truy vấn cơ sở dữ liệu</h1><p>'.$message.'</p>',
 				'ERROR: 500 - Lỗi truy vấn cơ sở dữ liệu',
 				[
 					'response'  => 500,
@@ -596,7 +573,7 @@ class Handler extends BaseInstances {
 
 			// Sử dụng wp_die.
 			wp_die(
-				'<h1>ERROR: 500 - Lỗi truy vấn cơ sở dữ liệu</h1><p>' . $message . '</p>',
+				'<h1>ERROR: 500 - Lỗi truy vấn cơ sở dữ liệu</h1><p>'.$message.'</p>',
 				'ERROR: 500 - Lỗi truy vấn cơ sở dữ liệu',
 				[
 					'response'  => 500,

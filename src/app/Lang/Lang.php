@@ -2,28 +2,26 @@
 
 namespace WPSPCORE\App\Lang;
 
-use Illuminate\Translation\Translator;
+use Illuminate\Translation\Translator as IlluminateLang;
 use WPSPCORE\BaseInstances;
 
 /**
- * @mixin \Illuminate\Translation\Translator
  * @mixin \Illuminate\Support\Facades\Lang
  */
 abstract class Lang extends BaseInstances {
 
-	private Translator $lang;
+	private ?IlluminateLang $facade;
 
 	/*
 	 *
 	 */
 
-	public function getLang(): Translator {
-//		return $this->funcs->_getApplication('translator');
-		return $this->lang;
+	public function getFacade(): ?IlluminateLang {
+		return $this->facade;
 	}
 
-	public function setLang() {
-		$this->lang = $this->funcs->_getApplication('translator');
+	public function setFacade() {
+		$this->facade = $this->funcs->_getApplication('translator');
 	}
 
 	/*
@@ -35,14 +33,14 @@ abstract class Lang extends BaseInstances {
 	}
 
 	public static function __callStatic($method, $arguments) {
-		$instance = static::instance();
+		$instance = static::wpspInstance();
 
 		$underlineMethod = '_' . $method;
 		if (method_exists($instance, $underlineMethod)) {
 			return $instance->$underlineMethod(...$arguments);
 		}
 
-		return $instance->getLang()->$method(...$arguments);
+		return $instance->getFacade()?->$method(...$arguments);
 	}
 
 }

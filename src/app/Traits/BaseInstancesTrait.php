@@ -11,6 +11,7 @@ use WPSPCORE\App\Routes\RouteTrait;
  * @property \WPSPCORE\Funcs          $funcs
  * @property \Illuminate\Http\Request $request
  * @method $this __wpspConstruct
+ * @method $this __instanceConstruct
  * @method $this customProperties
  * @method $this afterCustomProperties
  * @method $this afterInstanceConstruct
@@ -36,7 +37,8 @@ trait BaseInstancesTrait {
 		$this->prepareFuncs();
 		$this->prepareRequest();
 		$this->afterConstruct();
-		$this->baseInstanceCall('__wpspConstruct');
+		$this->baseInstanceCall('__wpspConstruct'); // Mọi params sẽ tự động tạo thành properties cho class.
+		$this->baseInstanceCall('__instanceConstruct');
 		$this->baseInstanceCall('customProperties');
 		$this->baseInstanceCall('afterCustomProperties');
 		$this->baseInstanceCall('afterInstanceConstruct');
@@ -48,12 +50,18 @@ trait BaseInstancesTrait {
 	 */
 
 	public function baseInstanceCall($method) {
-		if ($this->funcs && $this->request) {
+		if (($this->funcs && $this->request) || is_subclass_of($this, \WP_List_Table::class)) {
+			if (!method_exists($this, $method)) {
+				return null;
+			}
+
 			$path        = $this->extraParams['path'] ?? '';
 			$fullPath    = $this->extraParams['full_path'] ?? '';
 			$requestPath = ltrim($this->request->getRequestUri(), '/\\');
+
 			return $this->autoResolveAndCall($path, $fullPath, $requestPath, $this, $method);
 		}
+
 		return null;
 	}
 
@@ -62,6 +70,8 @@ trait BaseInstancesTrait {
 	 */
 
 	public function prepareFuncs() {
+		if ($this->funcs) return;
+
 		if (isset($this->extraParams['funcs']) && $this->extraParams['funcs'] && !$this->funcs) {
 			if (is_bool($this->extraParams['funcs'])) {
 				$this->funcs = new \WPSPCORE\Funcs(
@@ -75,10 +85,13 @@ trait BaseInstancesTrait {
 				$this->funcs = $this->extraParams['funcs'];
 			}
 		}
+
 		unset($this->extraParams['funcs']);
 	}
 
 	public function prepareRequest() {
+		if ($this->request) return;
+
 		if (isset($this->funcs) && $funcs = $this->funcs) {
 			if (isset($funcs::$request) && $funcs::$request) {
 				$this->request = $funcs::$request;
@@ -90,6 +103,24 @@ trait BaseInstancesTrait {
 		else {
 			$this->request = Request::capture();
 		}
+
+		// Set user resolver.
+		if (!$this->request?->getUserResolver()) {
+			$this->request?->setUserResolver(function() {
+				if (!$this->funcs->_getApplication()->bound('session.store')) {
+					return null;
+				}
+
+				$store = $this->funcs->_getApplication('session.store');
+
+				if (!$store->isStarted()) {
+					return null;
+				}
+
+				return $this->funcs?->_auth()?->user();
+			});
+		}
+
 		unset($this->extraParams['request']);
 	}
 

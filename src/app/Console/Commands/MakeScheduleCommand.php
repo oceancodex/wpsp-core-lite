@@ -52,25 +52,18 @@ class MakeScheduleCommand extends Command {
 		}
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className = Str::slug($hook, '_');
-		
-		if (class_exists('Illuminate\Console\Scheduling\Schedule')) {
-			$type = $type ?? $this->option('type') ?: 'wordpress';
-		}
-		else {
-			$type = 'wordpress'; // WPSP Lite không sử dụng được Schedule của Laravel.
-		}
-
-		$interval = $interval ?? $this->argument('interval') ?: 'everyMinute';
+		$className = preg_replace('/[^A-Za-z0-9_]/', '_', $hook);
+		$type      = $type ?? $this->option('type') ?: 'wordpress';
+		$interval  = $interval ?? $this->argument('interval') ?: 'everyMinute';
 
 		// Kiểm tra chuỗi hợp lệ.
 		$this->validateSlug($hook, 'hook');
 		$this->validateClassName($interval, 'interval');
 
 		// Kiểm tra tồn tại.
-		$path = $mainPath . '/app/WordPress/Schedules/' . $className . '.php';
+		$classPath = $mainPath . '/app/WordPress/Schedules/' . $className . '.php';
 
-		if (File::exists($path)) {
+		if (File::exists($classPath)) {
 			$this->error('Schedule: "' . $hook . '" already exists! Please try again.');
 			exit;
 		}
@@ -80,16 +73,16 @@ class MakeScheduleCommand extends Command {
 		 * Class.
 		 * ---
 		 */
-		$content = File::get(__DIR__ . '/../Stubs/Schedules/schedule.stub');
-		$content = str_replace(
+		$stub = File::get(__DIR__ . '/../Stubs/Schedules/schedule.stub');
+		$stub = str_replace(
 			['{{ class_name }}', '{{ hook }}', '{{ interval }}', '{{ type }}'],
 			[$className, $hook, $interval, $type],
-			$content
+			$stub
 		);
-		$content = $this->replaceNamespaces($content);
+		$stub = $this->replaceNamespaces($stub);
 
-		File::ensureDirectoryExists(dirname($path));
-		File::put($path, $content);
+		File::ensureDirectoryExists(dirname($classPath));
+		File::put($classPath, $stub);
 
 		/**
 		 * ---

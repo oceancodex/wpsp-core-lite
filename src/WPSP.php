@@ -2,12 +2,11 @@
 
 namespace WPSPCORE;
 
-use Dotenv\Dotenv;
 use Illuminate\Auth\AuthManager;
-use Illuminate\Console\Application as ConsoleApplication;
 use Illuminate\Container\Container;
-use Illuminate\Contracts\Translation\Loader;
-use Illuminate\Events\Dispatcher;
+use Illuminate\Cookie\CookieValuePrefix;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Encryption\Encrypter;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Foundation\Application;
@@ -17,431 +16,204 @@ use Illuminate\Foundation\Bootstrap\RegisterFacades;
 use Illuminate\Foundation\Bootstrap\RegisterProviders;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Foundation\Http\Kernel;
-use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Foundation\Exceptions\Renderer\Listener as ExceptionRendererListener;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Process\Factory as ProcessFactory;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Session\SessionManager;
 use Illuminate\Support\Timebox;
-use Illuminate\Translation\FileLoader;
-use Illuminate\Translation\Translator;
-use Illuminate\View\Engines\CompilerEngine;
-use Illuminate\View\Engines\EngineResolver;
-use Illuminate\View\Factory as ViewFactory;
-use Illuminate\View\FileViewFinder;
-use WPSPCORE\App\Http\Middleware\StartSessionIfAuthenticated;
-use WPSPCORE\App\View\BladeCompiler;
+use WPSPCORE\App\Http\Middleware\WPSPStartSession;
 use WPSPCORE\App\View\Directives\adminpagemetaboxes;
 
 abstract class WPSP extends BaseInstances {
 
 	/** @var null|Application|Container */
 	public $application = null;
-	public $artisan     = null;
 	public $response    = null;
 
+	/**
+	 * Custom middlewares.
+	 */
+	public $middlewares = [];
+
+	// Thêm thuộc tính lưu mốc thời gian bắt đầu khởi tạo ứng dụng.
+//	public $bootstrapStartTime;
+//	public $handleRequestStartTime;
+
 	/*
-	 *
+	 * Bootstrap
 	 */
 
 	public function setApplication($basePath, $handleRequest = true) {
-		if (class_exists('Illuminate\Foundation\Application')) {
-			$commands = $this->getCustomCommands();
-			$providers = $this->getConfig('providers');
+		// Ghi nhận mốc thời gian khởi tạo ngay lập tức.
+//		$this->bootstrapStartTime = microtime(true);
 
-			$this->application = Application::configure($basePath)
-				->withRouting(
-					web      : $this->funcs->_getRoutesPath('/original/web.php'),
-					api      : $this->funcs->_getRoutesPath('/original/api.php'),
-					commands : $this->funcs->_getRoutesPath('/original/console.php'),
-					health   : '/up',
-	//				apiPrefix: 'api/admin',
-				)
-				->withMiddleware(function(Middleware $middleware) {
-//					$middleware->append(StartSessionIfAuthenticated::class); // Start session trước mọi code (bao gồm cả view share).
-//					$middleware->append(StartSession::class);
-//					$middleware->append(PreventRequestForgery::class);
-//					$middleware->append(VerifyCsrfToken::class);
-				})
-				->withExceptions(function(Exceptions $exceptions) {})
-				->withProviders($providers)
-				->withCommands($commands)
-				->create();
+		$this->buildApplication($basePath);
 
-			$this->setPaths();
-			$this->afterSetPaths();
-			$this->bootstrap();
-			$this->afterBoostrap();
-			$this->bindings();
-			$this->afterBindings();
-			$this->extends();
+		$this->setPaths();
+		$this->afterSetPaths();
+		$this->bootstrap();
+		$this->afterBoostrap();
+		$this->bindings();
+		$this->afterBindings();
+		$this->extends();
 
-//			$this->registerBladeDirectives();
+		$this->application->boot();
 
-			$this->application->boot();
+		// Ghi nhận mốc thời gian sau khi boot thành công
+//		$this->application->instance('boot_time', microtime(true));
+//		$this->application->instance('bootstrap_start_time', $this->bootstrapStartTime);
 
-			if ($handleRequest) {
-				$this->handleRequest();
-			}
-		}
-		else {
-			$this->application = new Container();
-
-//			$this->bootstrap();
-			$this->afterBoostrap();
-			$this->bindings();
-			$this->afterBindings();
-			$this->extends();
+		if ($handleRequest) {
+			$this->handleRequest();
 		}
 	}
 
 	public function setApplicationForConsole($basePath) {
-		if (class_exists('Illuminate\Foundation\Application')) {
-			$commands = $this->getCustomCommands();
-			$providers = $this->getConfig('providers');
+		// Ghi nhận mốc thời gian khởi tạo ngay lập tức.
+//		$this->bootstrapStartTime = microtime(true);
 
-			$this->application = Application::configure($basePath)
-				->withRouting(
-					web      : $this->funcs->_getRoutesPath('/original/web.php'),
-					api      : $this->funcs->_getRoutesPath('/original/api.php'),
-					commands : $this->funcs->_getRoutesPath('/original/console.php'),
-					health   : '/up',
-//				apiPrefix: 'api/admin',
-				)
-				->withMiddleware(function(Middleware $middleware) {})
-				->withExceptions(function(Exceptions $exceptions) {})
-				->withProviders($providers)
-				->withCommands($commands)
-				->create();
+		$this->buildApplication($basePath);
 
-			$this->setPaths();
-			$this->afterSetPaths();
-			$this->bootstrapConsole();
-			$this->afterBoostrapConsole();
-			$this->bindingsConsole();
-			$this->afterBindingsConsole();
-			$this->extendsConsole();
+		$this->setPaths();
+		$this->afterSetPaths();
+		$this->bootstrap();
+		$this->afterBoostrapConsole();
+		$this->bindingsBase(); // Console không cần Listener của exception renderer
+		$this->afterBindingsConsole();
+		$this->extendsConsole();
 
-			$this->application->boot();
-		}
-		else {
-			$this->application = new Container();
-			$this->afterBoostrapConsole();
-			$this->bindingsConsole();
-			$this->afterBindingsConsole();
+		$this->application->boot();
 
-			$this->artisan = new ConsoleApplication(
-				$this->application,
-				$this->application['events'],
-				$this->funcs->_getVersion()
-			);
-
-			$commands = $this->getCustomCommands();
-			foreach ($commands as $command) {
-				try {
-					$this->artisan->add($this->application->make($command));
-				}
-				catch (\Exception $e) {}
-			}
-		}
+		// Ghi nhận mốc thời gian sau khi boot thành công
+//		$this->application->instance('boot_time', microtime(true));
+//		$this->application->instance('bootstrap_start_time', $this->bootstrapStartTime);
 
 		return $this->application;
 	}
 
+	public function buildApplication($basePath): void {
+		$this->application = Application::configure($basePath)
+			->withRouting(
+				web     : $this->funcs->_getRoutesPath('/original/web.php'),
+				api     : $this->funcs->_getRoutesPath('/original/api.php'),
+				commands: $this->funcs->_getRoutesPath('/original/console.php'),
+				health  : '/up',
+			)
+			->withMiddleware(function(Middleware $middleware) {})
+			->withExceptions(function(Exceptions $exceptions) {})
+			->withProviders($this->getConfig('providers'))
+			->withCommands($this->getCustomCommands())
+			->create();
+	}
+
 	/*
-	 *
+	 * Getters
 	 */
 
 	public function getApplication($abstract = null, $parameters = []) {
-		if ($abstract) {
-			return $this->application->make($abstract, $parameters);
-		}
-		return $this->application;
-	}
-
-	public function getArtisan() {
-		return $this->artisan;
+		return $abstract
+			? $this->application->make($abstract, $parameters)
+			: $this->application;
 	}
 
 	public function getCustomCommands() {
-		$commands = $this->funcs->_getAllClassesInDir(
-			'WPSPCORE\App\Console\Commands',
-			__DIR__ . '/app/Console/Commands'
+		return array_merge(
+			$this->funcs->_getAllClassesInDir(
+				__DIR__.'/app/Console/Commands',
+				'WPSPCORE\App\Console\Commands'
+			),
+			$this->funcs->_getAllClassesInDir(
+				__DIR__.'/app/Console/Commands/Extends',
+				'WPSPCORE\App\Console\Commands\Extends'
+			),
+			$this->funcs->_getAllClassesInDir(
+				$this->funcs->_getAppPath('/Widen/Commands'),
+				$this->funcs->_getRootNamespace().'\App\Widen\Commands'
+			),
 		);
-
-		$extendCommands = $this->funcs->_getAllClassesInDir(
-			'WPSPCORE\App\Console\Commands\Extends',
-			__DIR__ . '/app/Console/Commands/Extends'
-		);
-
-		if (!class_exists('Illuminate\Foundation\Application')) {
-			$consoleCommands = $this->funcs->_getAllClassesInDir(
-				$this->funcs->_getRootNamespace() . '\App\Console\Commands',
-				$this->funcs->_getAppPath('/Console/Commands')
-			);
-		}
-
-		$integrationCommands = $this->funcs->_getAllClassesInDir(
-			$this->funcs->_getRootNamespace() . '\App\Widen\Commands',
-			$this->funcs->_getAppPath('/Widen/Commands')
-		);
-
-		$commands = array_merge($commands, $extendCommands, $consoleCommands ?? [], $integrationCommands);
-
-		return $commands;
 	}
 
 	public function getConfig($fileName = null) {
-		$config = [];
-
-		if ($fileName) {
-			$config = require __DIR__ . '/config/' . $fileName . '.php';
-		}
-
-		return $config;
+		return $fileName ? require __DIR__.'/config/'.$fileName.'.php' : [];
 	}
 
 	/*
-	 *
+	 * Paths
 	 */
 
 	public function setPaths() {
-		$this->application->useAppPath($this->mainPath . '/app');
-		$this->application->useLangPath($this->mainPath . '/lang');
-		$this->application->useConfigPath($this->mainPath . '/config');
-		$this->application->usePublicPath($this->mainPath . '/public');
-		$this->application->useStoragePath($this->mainPath . '/storage');
-		$this->application->useDatabasePath($this->mainPath . '/database');
-		$this->application->useBootstrapPath($this->mainPath . '/bootstrap');
+		$this->application->useAppPath($this->mainPath.'/app');
+		$this->application->useLangPath($this->mainPath.'/lang');
+		$this->application->useConfigPath($this->mainPath.'/config');
+		$this->application->usePublicPath($this->mainPath.'/public');
+		$this->application->useStoragePath($this->mainPath.'/storage');
+		$this->application->useDatabasePath($this->mainPath.'/database');
+		$this->application->useBootstrapPath($this->mainPath.'/bootstrap');
 		$this->application->useEnvironmentPath($this->mainPath);
 	}
 
 	/*
-	 *
+	 * Bootstrap / Bindings
 	 */
 
 	public function bootstrap() {
-		// Environment variables.
 		(new LoadEnvironmentVariables)->bootstrap($this->application);
-
-		// Configs.
 		(new LoadConfiguration)->bootstrap($this->application);
-
-		// Facades.
 		(new RegisterFacades)->bootstrap($this->application);
-
-		// Providers.
 		(new RegisterProviders)->bootstrap($this->application);
 	}
 
+	// Alias giữ lại để không phá vỡ code cũ gọi bootstrapConsole().
 	public function bootstrapConsole() {
-		// Environment variables.
-		(new LoadEnvironmentVariables)->bootstrap($this->application);
-
-		// Configs.
-		(new LoadConfiguration)->bootstrap($this->application);
-
-		// Facades.
-		(new RegisterFacades)->bootstrap($this->application);
-
-		// Providers.
-		(new RegisterProviders)->bootstrap($this->application);
+		$this->bootstrap();
 	}
 
-	public function bindings() {
-		// Request.
-		$this->application->instance(Request::class, $this->request);
+	/**
+	 * Bindings dùng chung cho cả web & console.
+	 */
+	private function bindingsBase(): void {
 		$this->application->instance('request', $this->request);
 
-		// Funcs.
-		$this->application->instance('funcs', $this->funcs ?? new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams));
+		$this->application->instance(
+			'funcs',
+			$this->funcs ??= new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams)
+		);
 
-		// Files.
-		$this->application->singleton('files', function() { return new Filesystem(); });
+		$this->application->singleton('files', fn() => new Filesystem());
 
-		// Storage và Filesystem.
-		$this->application->singleton('filesystem', function($app) { return new FilesystemManager($app); });
+		$this->application->singleton('process', fn($app) => $app->make(ProcessFactory::class));
+
+		$this->application->singleton('filesystem', fn($app) => new FilesystemManager($app));
 		$this->application->alias('filesystem', 'storage');
 		$this->application->alias('filesystem', FilesystemManager::class);
-
-		if (class_exists('Illuminate\Foundation\Application')) {
-			// Process.
-			$this->application->singleton('process', function($app) { return $app->make(ProcessFactory::class); });
-		}
-		else {
-			// Env.
-			$dotenv = Dotenv::createImmutable($this->mainPath); $dotenv->safeLoad();
-			$this->application->instance('env', $_ENV);
-
-			// Config.
-			$configs     = [];
-			$configFiles = $this->funcs->_getAllFilesInFolder($this->funcs->_getConfigPath());
-			foreach ($configFiles as $configFile) {
-				$configs[$configFile['name_without_extension']] = require_once($configFile['real_path']);
-			}
-			$this->application->singleton('config', function($app) use ($configs) {
-				return new \Illuminate\Config\Repository($configs);
-			});
-
-			// Event.
-			$this->application->singleton('events', function($app) {
-				return new Dispatcher($app);
-			});
-
-			// Session.
-//			$this->application->singleton('session', function($app) {
-//				return new SessionManager($app);
-//			});
-//			$this->application->singleton('session.store', function($app) {
-//				return $app['session']->driver();
-//			});
-
-			// View.
-			$this->application->singleton('blade.compiler', function($app) {
-				return new BladeCompiler($app['files'], $this->funcs->_getStoragePath('/framework/views'), $this->funcs);
-			});
-			$this->application->singleton('view.engine.resolver', function($app) {
-				$resolver = new EngineResolver();
-
-				$resolver->register('blade', function() use ($app) {
-					return new CompilerEngine($app['blade.compiler']);
-				});
-
-				return $resolver;
-			});
-			$this->application->singleton('view.finder', function($app) {
-				return new FileViewFinder(
-					$app['files'],
-					[$this->funcs->_getResourcesPath('/views')]
-				);
-			});
-			$this->application->singleton('view', function($app) {
-				return new ViewFactory(
-					$app['view.engine.resolver'],
-					$app['view.finder'],
-					$app['events']
-				);
-			});
-			$this->application->alias('view', \Illuminate\Contracts\View\Factory::class);
-			$this->application->alias('view', \Illuminate\View\Factory::class);
-			$this->application->alias('view.finder', \Illuminate\View\ViewFinderInterface::class);
-			$this->application->alias('blade.compiler', \Illuminate\View\Compilers\BladeCompiler::class);
-
-			// Translation.
-//			$this->application->singleton(Loader::class, function($app) {
-//				return new FileLoader(
-//					$app->make(Filesystem::class),
-//					$this->funcs->_getMainPath('/lang'),
-//				);
-//			});
-//			$this->application->singleton('translator', function($app) {
-//				return new Translator(
-//					$app->make(Loader::class),
-//					$this->funcs->_locale(),
-//				);
-//			});
-//			$this->application->alias('translator', Translator::class);
-//			$this->application->alias('translator', \Illuminate\Contracts\Translation\Translator::class);
-		}
 	}
 
+	/**
+	 * instance - khởi tạo ngay khi bootstrap.
+	 * singleton - chỉ khởi tạo khi cần.
+	 */
+	public function bindings() {
+		$this->bindingsBase();
+
+		// Exception Renderer Listener — bắt query/log/dump cho trang lỗi.
+		// Bind singleton TRƯỚC khi make để renderer và listener share cùng instance.
+		$this->application->singleton(ExceptionRendererListener::class);
+		$this->application->make(ExceptionRendererListener::class)
+			->registerListeners($this->application->make('events'));
+	}
+
+	// Alias giữ lại tương thích ngược.
 	public function bindingsConsole() {
-		// Funcs.
-		$this->application->instance('funcs', $this->funcs ?? new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams));
-
-		// Files.
-		$this->application->singleton('files', function() { return new Filesystem(); });
-
-		// Storage và Filesystem.
-		$this->application->singleton('filesystem', function($app) { return new FilesystemManager($app); });
-		$this->application->alias('filesystem', 'storage');
-		$this->application->alias('filesystem', FilesystemManager::class);
-
-		if (class_exists('Illuminate\Foundation\Application')) {
-			// Process.
-			$this->application->singleton('process', function($app) { return $app->make(ProcessFactory::class); });
-		}
-		else {
-			// Env.
-			$dotenv = Dotenv::createImmutable($this->mainPath); $dotenv->safeLoad();
-			$this->application->instance('env', $_ENV);
-
-			// Config.
-			$configs     = [];
-			$configFiles = $this->funcs->_getAllFilesInFolder($this->funcs->_getConfigPath());
-			foreach ($configFiles as $configFile) {
-				$configs[$configFile['name_without_extension']] = require_once($configFile['real_path']);
-			}
-			$this->application->singleton('config', function($app) use ($configs) {
-				return new \Illuminate\Config\Repository($configs);
-			});
-
-			// Event.
-			$this->application->singleton('events', function($app) {
-				return new Dispatcher($app);
-			});
-
-			// View.
-			$this->application->singleton('blade.compiler', function($app) {
-				return new BladeCompiler($app['files'], $this->funcs->_getStoragePath('/framework/views'), $this->funcs);
-			});
-			$this->application->singleton('view.engine.resolver', function($app) {
-				$resolver = new EngineResolver();
-
-				$resolver->register('blade', function() use ($app) {
-					return new CompilerEngine($app['blade.compiler']);
-				});
-
-				return $resolver;
-			});
-			$this->application->singleton('view.finder', function($app) {
-				return new FileViewFinder(
-					$app['files'],
-					[$this->funcs->_getResourcesPath('/views')]
-				);
-			});
-			$this->application->singleton('view', function($app) {
-				return new ViewFactory(
-					$app['view.engine.resolver'],
-					$app['view.finder'],
-					$app['events']
-				);
-			});
-			$this->application->alias('view', \Illuminate\Contracts\View\Factory::class);
-			$this->application->alias('view', \Illuminate\View\Factory::class);
-			$this->application->alias('view.finder', \Illuminate\View\ViewFinderInterface::class);
-			$this->application->alias('blade.compiler', \Illuminate\View\Compilers\BladeCompiler::class);
-
-			// Translation.
-//			$this->application->singleton(Loader::class, function($app) {
-//				return new FileLoader(
-//					$app->make(Filesystem::class),
-//					$this->funcs->_getMainPath('/lang'),
-//				);
-//			});
-//			$this->application->singleton('translator', function($app) {
-//				return new Translator(
-//					$app->make(Loader::class),
-//					$this->funcs->_locale(),
-//				);
-//			});
-//			$this->application->alias('translator', Translator::class);
-//			$this->application->alias('translator', \Illuminate\Contracts\Translation\Translator::class);
-		}
+		$this->bindingsBase();
 	}
 
 	public function extends() {
-		// Override SessionGuard để thay đổi remember_web_* thành wpsp_remember_web_*
 		$this->overrideRememberCookieName();
 	}
 
 	public function extendsConsole() {}
 
 	/*
-	 *
+	 * Hooks
 	 */
 
 	public function afterSetPaths() {}
@@ -455,7 +227,7 @@ abstract class WPSP extends BaseInstances {
 	public function afterBindingsConsole() {}
 
 	/*
-	 *
+	 * Blade directives
 	 */
 
 	public function registerBladeDirectives() {
@@ -476,78 +248,257 @@ abstract class WPSP extends BaseInstances {
 	}
 
 	/*
-	 *
+	 * Request lifecycle
 	 */
 
 	public function handleRequest() {
-		// Start session.
-		$this->startSessionIfAuthenticated();
+		$this->beforeHandleRequest();
 
-		/** @var \Illuminate\Foundation\Http\Kernel $kernel */
-//		$kernel         = $this->application->make(Kernel::class);
-//		$this->response = $kernel->handle($this->request);
-//		$this->response->send();
-//		$kernel->terminate($this->request, $this->response);
+//		$this->handleRequestStartTime = microtime(true);
+
+		$this->startSession();
+
+		// 1: Đẩy Cookie sớm về Client.
+//		$this->sendSessionCookiesToClient();
+
+		// 2: Bật Output Buffering để đánh chặn TẤT CẢ các lệnh die/exit (bao gồm cả wp_send_json)
+		ob_start(function($buffer) {
+			// Hàm này tự động chạy NGAY TRƯỚC KHI PHP kết thúc request (kể cả khi gọi die/exit)
+			$this->saveSession();
+			return $buffer;
+		});
+
+		// 3: Dự phòng cho request thông thường kết thúc qua hook shutdown của WP.
+//		if (function_exists('add_action')) {
+//			add_action('shutdown', [$this, 'saveSession'], 1);
+//		} else {
+//			register_shutdown_function([$this, 'saveSession']);
+//		}
+
+		$this->applyMiddlewares();
+
+		$this->beforeResponse();
+
+		$this->shareErrorsToViews();
+
+//		$this->application->instance('after_handle_request_time', microtime(true));
+//		$this->application->instance('start_handle_request_time', $this->handleRequestStartTime);
 
 		$this->afterHandleRequest();
 	}
 
-	public function afterHandleRequest() {
-		// Share flash data to view.
-//		add_action('template_redirect', function() {
-//			$this->application->make('view')->share('errors', session('errors'));
-			$this->application->booted(function($app) {
-				$session = $app['session.store'];
-				$view    = $app['view'];
+	public function beforeHandleRequest() {}
 
-				foreach ($session->get('_flash.new', []) as $key) {
-					$view->share($key, $session->get($key));
-				}
-			});
-//		});
+	public function startSession() {
+		if ($this->funcs->_isWPInternalRequest()) {
+			return;
+		}
+
+		// Start session middleware.
+		$middleware = $this->application->make(WPSPStartSession::class);
+		$middleware->handle($this->request, fn($request) => $request, ['funcs' => $this->funcs]);
+
+		// Save flash data.
+		if ($this->application->bound('session.store')) {
+			/** @var \Illuminate\Session\Store $session */
+			$session = $this->application['session.store'];
+
+			if ($session->isStarted()) {
+				// Gắn object Session Store vào Request hiện tại ngay lập tức
+				$this->request->setLaravelSession($session);
+			}
+		}
+	}
+
+	public function sendSessionCookiesToClient() {
+		$session = $this->resolveStartedSession();
+		if (!$session) {
+			return;
+		}
+
+		$this->emitCookies($this->buildSessionCookies($session));
+	}
+
+	public function saveSession() {
+		$session = $this->resolveStartedSession();
+		if (!$session) {
+			return;
+		}
+
+		// 1. Đồng bộ lại Session từ Request (đề phòng trường hợp Session ID đã bị thay đổi bởi Auth::logout hoặc Auth::login)
+		if ($this->request->hasSession()) {
+			$session = $this->request->session();
+		}
+
+		// 2. Persist dữ liệu session xuống database
+		$session->save();
+
+		// 3. Ghi Cookie mới nhất (bao gồm cả Session ID mới sau khi logout/login) ra client
+		$this->emitCookies($this->buildSessionCookies($session));
+	}
+
+	public function applyMiddlewares() {
+		foreach ($this->middlewares as $middleware) {
+			$middlewareConvertEmptyStringsToNull = $this->application->make($middleware);
+			$middlewareConvertEmptyStringsToNull->handle($this->request, fn($request) => $request);
+		}
+	}
+
+	public function beforeResponse() {}
+
+	public function shareErrorsToViews() {
+		if ($this->application->bound('view') && $this->application->bound('session.store')) {
+			$errors = $this->application['session.store']->get('errors', new \Illuminate\Support\ViewErrorBag());
+			$this->application['view']->share('errors', $errors);
+		}
+	}
+
+	public function afterHandleRequest() {}
+
+	/*
+	 * Session cookie helpers
+	 */
+
+	/**
+	 * Trả về session store nếu đã thực sự start, ngược lại null.
+	 */
+	private function resolveStartedSession(): ?\Illuminate\Session\Store {
+		if ($this->funcs->_isWPInternalRequest() || !$this->application->bound('session.store')) {
+			return null;
+		}
+
+		/** @var \Illuminate\Session\Store $session */
+		$session = $this->application['session.store'];
+
+		return $session->isStarted() ? $session : null;
+	}
+
+	/**
+	 * Dựng cả Auth cookie (đã mã hóa), XSRF cookie, và tự động vét các cookie hàng đợi từ CookieJar.
+	 */
+	private function buildSessionCookies(\Illuminate\Session\Store $session): array {
+		$sessionConfig = $this->application['session']->getSessionConfig();
+		$configSession = $this->funcs->_config('session');
+
+		$cookies = [];
+
+		if (($sessionConfig['driver'] ?? '') !== 'array') {
+			$lifetime = $sessionConfig['lifetime'];
+			$path     = $configSession['path'];
+			$domain   = $configSession['domain'];
+			$secure   = $configSession['secure'] ?? true;
+			$sameSite = $sessionConfig['same_site'] ?? 'Lax';
+
+			/** @var Encrypter $encrypter */
+			$encrypter = $this->application->make(Encrypter::class);
+
+			// ==========================================
+			// Mã hóa Auth Session Cookie
+			// ==========================================
+			$sessionName = $session->getName();
+
+			// Thêm tiền tố định danh Cookie nhằm tránh việc tráo đổi giá trị giữa các cookie khác nhau
+			$sessionPrefix = CookieValuePrefix::create($sessionName, $encrypter->getKey());
+
+			// Tiến hành mã hóa (không dùng serialize)
+			$encryptedSessionId = $encrypter->encrypt(
+				$sessionPrefix . $session->getId(),
+				false
+			);
+
+			$cookies[] = (string)cookie(
+				$sessionName,
+				$encryptedSessionId, // Gửi chuỗi đã mã hóa.
+				$lifetime, $path, $domain, $secure, true, false, $sameSite
+			);
+
+			// 2. XSRF cookie (httpOnly = false để JS đọc được).
+			$xsrfName   = $sessionName . '-XSRF-TOKEN';
+			$xsrfPrefix = CookieValuePrefix::create($xsrfName, $encrypter->getKey());
+			$xsrfToken  = $encrypter->encrypt(
+				$xsrfPrefix . $session->token(),
+				EncryptCookies::serialized('XSRF-TOKEN')
+			);
+
+			$cookies[] = (string)cookie(
+				$xsrfName,
+				$xsrfToken,
+				$lifetime, $path, $domain, $secure, false, false, $sameSite
+			);
+		}
+
+		// 3. Tự động kiểm tra và quét qua CookieJar để lôi các cookie khác trong hàng đợi ra (ví dụ: Remember Me)
+		if ($this->application->bound('cookie')) {
+			/** @var \Illuminate\Cookie\CookieJar $cookieJar */
+			$cookieJar = $this->application['cookie'];
+
+			foreach ($cookieJar->getQueuedCookies() as $queuedCookie) {
+				// Đổi timestamp hết hạn sang số phút (hàm cookie() nhận tham số $minutes)
+				$minutes = $queuedCookie->getExpiresTime() ? ($queuedCookie->getExpiresTime() - time()) / 60 : 0;
+
+				$cookies[] = (string)cookie(
+					$queuedCookie->getName(),
+					$queuedCookie->getValue(),
+					$minutes,
+					$path,
+					$domain,
+					$secure,
+					$queuedCookie->isHttpOnly(),
+					$queuedCookie->isRaw(),
+					$sameSite
+				);
+			}
+
+			// Dọn dẹp sạch hàng đợi sau khi đã lấy, tránh đẩy trùng lặp ở các hook kề sau.
+			$cookieJar->flushQueuedCookies();
+		}
+
+		return $cookies;
+	}
+
+	/**
+	 * Ghi các cookie header ra client, chỉ khi headers chưa gửi.
+	 *
+	 * @param string[] $cookies
+	 */
+	private function emitCookies(array $cookies): void {
+		if (headers_sent()) {
+			return;
+		}
+		foreach ($cookies as $cookie) {
+			@header('Set-Cookie: '.$cookie, false);
+		}
 	}
 
 	/*
-	 *
+	 * Auth
 	 */
 
 	/**
-	 * Start session.
-	 */
-	public function startSessionIfAuthenticated() {
-		$middleware = $this->application->make(StartSessionIfAuthenticated::class);
-		$middleware->handle($this->request, function($request) {
-			return $request;
-		}, ['funcs' => $this->funcs]);
-	}
-
-	/**
-	 * Override SessionGuard để thay đổi remember_web_* thành wpsp_remember_web_*
+	 * Override SessionGuard để đổi remember_web_* → wpsp_remember_web_*.
 	 */
 	private function overrideRememberCookieName() {
-		if (class_exists('Illuminate\Auth\AuthManager')) {
-			$this->application->afterResolving('auth', function(AuthManager $auth) {
-				$auth->extend('session', function($app, $name, $config) use ($auth) {
-					$provider = $auth->createUserProvider($config['provider']);
+		$this->application->afterResolving('auth', function(AuthManager $auth) {
+			$auth->extend('session', function($app, $name, $config) use ($auth) {
+				$provider = $auth->createUserProvider($config['provider']);
 
-					$guard = new \WPSPCORE\App\Auth\SessionGuard(
-						$name,
-						$provider,
-						$app['session.store'],
-						$app['request'],
-						$app->make(Timebox::class),
-						true,
-						200000,
-						$app['funcs'] // truyền funcs trực tiếp
-					);
+				$guard = new \WPSPCORE\App\Auth\SessionGuard(
+					$name,
+					$provider,
+					$app['session.store'],
+					$app['request'],
+					$app->make(Timebox::class),
+					true,
+					200000,
+					$app['funcs']
+				);
 
-					$guard->setCookieJar($app['cookie']);
-					$guard->setRequest($app['request']);
+				$guard->setCookieJar($app['cookie']);
+				$guard->setRequest($app['request']);
 
-					return $guard;
-				});
+				return $guard;
 			});
-		}
+		});
 	}
 
 }
