@@ -101,7 +101,7 @@ trait BaseInstancesTrait {
 			}
 		}
 		else {
-			$this->request = Request::capture();
+			$this->request = class_exists('Illuminate\Http\Request') ? Request::capture() : null;
 		}
 
 		// Set user resolver.
