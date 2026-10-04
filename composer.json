@@ -7,11 +7,8 @@
 	"license": "GPL-2.0-or-later",
 	"require": {
 		"php": "^8.3",
-		"illuminate/container": "^v13.16",
-		"illuminate/http": "^v13.16",
-		"illuminate/console": "^v13.16",
-		"illuminate/config": "^v13.16",
-		"vlucas/phpdotenv": "^v5.6",
+		"illuminate/http": "^v13.34",
+		"illuminate/console": "^v13.34",
 		"yahnis-elsts/plugin-update-checker": "^v5.6"
 	},
 	"config": {
