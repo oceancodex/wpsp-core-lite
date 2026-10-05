@@ -11,7 +11,7 @@ namespace WPSPCORE\App\Console;
 use WPSPCORE\App\App\Application;
 
 if (class_exists('Illuminate\Console\Command')) {
-	class Command extends \Illuminate\Console\Command {}
+	abstract class Command extends \Illuminate\Console\Command {}
 }
 else {
 	abstract class Command {

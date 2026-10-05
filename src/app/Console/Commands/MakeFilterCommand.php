@@ -3,7 +3,7 @@
 namespace WPSPCORE\App\Console\Commands;
 
 use WPSPCORE\App\Console\Command;
-use Illuminate\Support\Facades\File;
+use WPSPCORE\App\File\File;
 use WPSPCORE\App\Console\Traits\CommandsTrait;
 
 class MakeFilterCommand extends Command {

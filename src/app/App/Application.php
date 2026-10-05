@@ -18,6 +18,14 @@ class Application {
 	protected $commands = [];
 	protected $useColor;
 
+	protected $except = [
+		'KeyGenerateCommand',
+		'ModelMakeCommand',
+		'SeedCommand',
+		'SeederMakeCommand',
+		'WipeCommand'
+	];
+
 	public function __construct($basePath, $name = 'WPSP Artisan', $version = '1.0.0') {
 		$this->basePath = rtrim($basePath, '/\\');
 		$this->name     = $name;
@@ -54,6 +62,21 @@ class Application {
 	/**
 	 * Quét đệ quy thư mục, tìm mọi class kế thừa Command và đăng ký.
 	 */
+	/**
+	 * Thêm class cần bỏ qua từ bên ngoài, vd: $app->except(['FooCommand'])->load(...)
+	 */
+	public function except(array $classes) {
+		$this->except = array_merge($this->except, $classes);
+		return $this;
+	}
+
+	protected function isExcepted($class) {
+		$shortName = substr(strrchr('\\' . $class, '\\'), 1);
+
+		return in_array($shortName, $this->except, true)
+			|| in_array(ltrim($class, '\\'), $this->except, true);
+	}
+
 	public function load($dir) {
 		if (!is_dir($dir)) return $this;
 
@@ -72,6 +95,9 @@ class Application {
 		foreach ($files as $file) {
 			$class = $this->classFromFile($file);
 			if (!$class) continue;
+
+			// Bỏ qua trước khi require để file không bị nạp.
+			if ($this->isExcepted($class)) continue;
 
 			try {
 				if (!class_exists($class, true)) {
