@@ -12,13 +12,14 @@ use WPSPCORE\App\Console\Command;
 
 class Application extends Container {
 
-	protected $name;
-	protected $version;
-	protected $basePath;
-	protected $commands = [];
-	protected $useColor;
+	public $name;
+	public $funcs;
+	public $version;
+	public $basePath;
+	public $commands = [];
+	public $useColor;
 
-	protected $except = [
+	public $except = [
 		'KeyGenerateCommand',
 		'ModelMakeCommand',
 		'SeedCommand',
@@ -26,9 +27,10 @@ class Application extends Container {
 		'WipeCommand',
 	];
 
-	public function __construct($basePath, $name = 'WPSP Artisan', $version = '1.0.0') {
+	public function __construct($basePath, $funcs, $name = 'WPSP Artisan', $version = '1.0.0') {
 		$this->basePath = rtrim($basePath, '/\\');
 		$this->name     = $name;
+		$this->funcs    = $funcs;
 		$this->version  = $version;
 		$this->useColor = getenv('NO_COLOR') === false
 			&& (!function_exists('stream_isatty') || @stream_isatty(STDOUT));
@@ -42,7 +44,7 @@ class Application extends Container {
 	 * Đăng ký chính Application vào container.
 	 * => make('app'), make(Container::class), make(Application::class) đều trả về $this.
 	 */
-	protected function registerBaseBindings() {
+	public function registerBaseBindings() {
 		static::setInstance($this);
 
 		$this->instance('app', $this);
@@ -88,7 +90,7 @@ class Application extends Container {
 		return $this;
 	}
 
-	protected function isExcepted($class) {
+	public function isExcepted($class) {
 		$shortName = substr(strrchr('\\' . $class, '\\'), 1);
 
 		return in_array($shortName, $this->except, true)
@@ -140,7 +142,7 @@ class Application extends Container {
 	/**
 	 * Đọc namespace + tên class từ file mà không cần include.
 	 */
-	protected function classFromFile($file) {
+	public function classFromFile($file) {
 		$code = file_get_contents($file);
 		if (!preg_match('/^\s*(?:abstract\s+|final\s+|readonly\s+)*class\s+(\w+)/m', $code, $c)) {
 			return null;
@@ -274,7 +276,7 @@ class Application extends Container {
 		return isset($codes[$color]) ? "\033[{$codes[$color]}m{$text}\033[0m" : $text;
 	}
 
-	protected function renderList($namespace = null) {
+	public function renderList($namespace = null) {
 		echo $this->name . ' ' . $this->color($this->version, 'green') . PHP_EOL . PHP_EOL;
 
 		echo $this->color('Usage:', 'yellow') . PHP_EOL;
@@ -320,7 +322,7 @@ class Application extends Container {
 		}
 	}
 
-	protected function renderException(\Throwable $e) {
+	public function renderException(\Throwable $e) {
 		$lines = explode("\n", $e->getMessage());
 		$width = max(array_map('mb_strlen', $lines)) + 4;
 
