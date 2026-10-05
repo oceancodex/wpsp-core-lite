@@ -32,6 +32,7 @@ class Application {
 		$this->version  = $version;
 		$this->useColor = getenv('NO_COLOR') === false
 			&& (!function_exists('stream_isatty') || @stream_isatty(STDOUT));
+
 		$this->load(__DIR__ . '/../Console/Commands');
 	}
 
