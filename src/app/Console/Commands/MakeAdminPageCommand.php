@@ -24,8 +24,7 @@ class MakeAdminPageCommand extends Command {
 		 * Funcs.
 		 * ---
 		 */
-//		$this->funcs = $this->getLaravel()->make('funcs');
-		echo '<pre style="background: white; z-index: 9999; position: relative;">'; print_r($this->app->make('funcs')); echo '</pre>';
+		$this->funcs = $this->getLaravel()->make('funcs');
 		$mainPath    = $this->funcs->mainPath;
 
 		/**

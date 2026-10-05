@@ -10,7 +10,7 @@ namespace WPSPCORE\App\App;
 
 use WPSPCORE\App\Console\Command;
 
-class Application {
+class Application extends Container {
 
 	protected $name;
 	protected $version;
@@ -23,7 +23,7 @@ class Application {
 		'ModelMakeCommand',
 		'SeedCommand',
 		'SeederMakeCommand',
-		'WipeCommand'
+		'WipeCommand',
 	];
 
 	public function __construct($basePath, $name = 'WPSP Artisan', $version = '1.0.0') {
@@ -33,11 +33,28 @@ class Application {
 		$this->useColor = getenv('NO_COLOR') === false
 			&& (!function_exists('stream_isatty') || @stream_isatty(STDOUT));
 
+		$this->registerBaseBindings();
+
 		$this->load(__DIR__ . '/../Console/Commands');
 	}
 
-	public function basePath() {
-		return $this->basePath;
+	/**
+	 * Đăng ký chính Application vào container.
+	 * => make('app'), make(Container::class), make(Application::class) đều trả về $this.
+	 */
+	protected function registerBaseBindings() {
+		static::setInstance($this);
+
+		$this->instance('app', $this);
+		$this->alias('app', Container::class);
+		$this->alias('app', self::class);
+		if (static::class !== self::class) {
+			$this->alias('app', static::class);
+		}
+	}
+
+	public function basePath($path = '') {
+		return $path ? $this->basePath . '/' . ltrim($path, '/\\') : $this->basePath;
 	}
 
 	/*
@@ -113,7 +130,7 @@ class Application {
 
 			$ref = new \ReflectionClass($class);
 			if ($ref->isSubclassOf(Command::class) && $ref->isInstantiable()) {
-				$this->add($ref->newInstance());
+				$this->add($this->make($class));
 			}
 		}
 

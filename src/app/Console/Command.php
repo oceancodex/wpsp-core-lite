@@ -14,6 +14,21 @@ if (class_exists('Illuminate\Console\Command')) {
 	abstract class Command extends \Illuminate\Console\Command {}
 }
 else {
+	/**
+	 * Base command - mô phỏng Illuminate\Console\Command bằng PHP thuần.
+	 *
+	 * Hỗ trợ cú pháp $signature giống Laravel:
+	 *   {name}          argument bắt buộc
+	 *   {name?}         argument tuỳ chọn
+	 *   {name=foo}      argument tuỳ chọn có giá trị mặc định
+	 *   {name*}         argument dạng mảng (bắt buộc), {name?*} (tuỳ chọn)
+	 *   {--flag}        option dạng cờ (true/false)
+	 *   {--opt=}        option nhận giá trị (mặc định null)
+	 *   {--opt=foo}     option nhận giá trị, mặc định "foo"
+	 *   {--opt=*}       option nhận nhiều giá trị
+	 *   {--P|opt=}      option có shortcut -P
+	 *   {... : Mô tả}   mô tả cho argument/option
+	 */
 	abstract class Command {
 
 		protected $signature   = '';
@@ -22,6 +37,9 @@ else {
 
 		/** @var Application */
 		protected $app;
+
+		/** @var Application Tương thích code cũ: $this->laravel->make(...) */
+		protected $laravel;
 
 		protected $name;
 		protected $argumentDefs = [];
@@ -35,10 +53,11 @@ else {
 			$this->parseSignature($this->signature);
 		}
 
-		/**
-		 * Logic chính của command. Trả về int (exit code) hoặc null.
+		/*
+		 * Logic chính đặt trong handle(). Không khai báo abstract để command con
+		 * có thể type-hint dependency: public function handle(Funcs $funcs) { ... }
+		 * Trả về int (exit code) hoặc null.
 		 */
-		abstract public function handle();
 
 		/*
 		 * ---
@@ -59,12 +78,23 @@ else {
 		}
 
 		public function setApplication(Application $app) {
-			$this->app = $app;
+			$this->app = $this->laravel = $app;
 			return $this;
 		}
 
 		public function getApplication() {
 			return $this->app;
+		}
+
+		public function getLaravel() {
+			return $this->app;
+		}
+
+		/**
+		 * Lấy service từ container: $this->make('funcs')
+		 */
+		public function make($abstract, array $parameters = []) {
+			return $this->app->make($abstract, $parameters);
 		}
 
 		/**
@@ -177,7 +207,13 @@ else {
 				return 0;
 			}
 
-			$result = $this->handle();
+			if (!method_exists($this, 'handle')) {
+				throw new \LogicException('No handle() method defined in ' . static::class . '.');
+			}
+
+			// Inject dependency vào handle() qua container.
+			$result = $this->app ? $this->app->call([$this, 'handle']) : $this->handle();
+
 			return is_int($result) ? $result : 0;
 		}
 
@@ -345,10 +381,22 @@ else {
 		}
 
 		protected function readLine($prompt) {
+			// In phần câu hỏi (có màu, có xuống dòng) bằng echo,
+			// chỉ đưa dòng prompt cuối cùng cho readline().
+			$pos = strrpos($prompt, "\n");
+			if ($pos !== false) {
+				echo substr($prompt, 0, $pos + 1);
+				$prompt = substr($prompt, $pos + 1);
+			}
+
+			// readline() đếm cả byte mã màu ANSI => lệch con trỏ (rõ nhất trên Windows).
+			$prompt = preg_replace('/\033\[[0-9;]*m/', '', $prompt);
+
 			if (function_exists('readline') && @stream_isatty(STDIN)) {
 				$line = readline($prompt);
 				return $line === false ? null : $line;
 			}
+
 			echo $prompt;
 			$line = fgets(STDIN);
 			return $line === false ? null : rtrim($line, "\r\n");
@@ -523,4 +571,5 @@ else {
 		}
 
 	}
+
 }
