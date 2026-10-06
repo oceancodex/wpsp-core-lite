@@ -32,12 +32,12 @@ class Application extends Container {
 		$this->name     = $name;
 		$this->funcs    = $funcs;
 		$this->version  = $version;
-		$this->useColor = getenv('NO_COLOR') === false
-			&& (!function_exists('stream_isatty') || @stream_isatty(STDOUT));
+		$this->useColor = getenv('NO_COLOR') === false && (!function_exists('stream_isatty') || @stream_isatty(STDOUT));
 
 		$this->registerBaseBindings();
 
 		$this->load(__DIR__ . '/../Console/Commands');
+		$this->load($this->basePath . '/app/Console/Commands');
 	}
 
 	/**
