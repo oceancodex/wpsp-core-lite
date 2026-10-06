@@ -6,7 +6,7 @@
  * Time: 8:56 CH
  */
 
-namespace WPSPCORE\App\App;
+namespace WPSPCORE\App\Widen\Commons\Application;
 
 use WPSPCORE\App\Console\Command;
 
@@ -27,7 +27,7 @@ class Application extends Container {
 		'WipeCommand',
 	];
 
-	public function __construct($basePath, $funcs, $name = 'WPSP Artisan', $version = '1.0.0') {
+	public function __construct($basePath, $funcs = null, $name = 'WPSP Artisan', $version = '1.0.0') {
 		$this->basePath = rtrim($basePath, '/\\');
 		$this->name     = $name;
 		$this->funcs    = $funcs;

@@ -173,10 +173,7 @@ abstract class WPSP extends BaseInstances {
 	private function bindingsBase(): void {
 		$this->application->instance('request', $this->request);
 
-		$this->application->instance(
-			'funcs',
-			$this->funcs ??= new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams)
-		);
+		$this->application->instance('funcs', $this->funcs ??= new Funcs($this->mainPath, $this->rootNamespace, $this->prefixEnv, $this->extraParams));
 
 		$this->application->singleton('files', fn() => new Filesystem());
 
@@ -197,8 +194,7 @@ abstract class WPSP extends BaseInstances {
 		// Exception Renderer Listener — bắt query/log/dump cho trang lỗi.
 		// Bind singleton TRƯỚC khi make để renderer và listener share cùng instance.
 		$this->application->singleton(ExceptionRendererListener::class);
-		$this->application->make(ExceptionRendererListener::class)
-			->registerListeners($this->application->make('events'));
+		$this->application->make(ExceptionRendererListener::class)->registerListeners($this->application->make('events'));
 	}
 
 	// Alias giữ lại tương thích ngược.

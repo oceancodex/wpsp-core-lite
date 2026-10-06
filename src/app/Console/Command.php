@@ -8,7 +8,7 @@
 
 namespace WPSPCORE\App\Console;
 
-use WPSPCORE\App\App\Application;
+use WPSPCORE\App\Widen\Commons\Application\Application;
 
 if (class_exists('Illuminate\Console\Command')) {
 	abstract class Command extends \Illuminate\Console\Command {}
