@@ -23,6 +23,7 @@ use WPSPCORE\App\Widen\Support\Facades\Facade;
  * $bindings / $singletons; deferred khi có provides() và isDeferred() === true.
  */
 class Application extends Container {
+
 	public $name    = 'WPSP Framework';
 	public $version = 'Lite';
 
