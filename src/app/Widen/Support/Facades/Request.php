@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Widen\Facades;
+namespace WPSPCORE\App\Widen\Support\Facades;
 
 if (class_exists('Illuminate\Support\Facades\Request')) {
 	class Request extends \Illuminate\Support\Facades\Request {}
@@ -13,10 +13,10 @@ else {
 	 * Lấy object:  Request::instance() hoặc Request::getFacadeRoot()
 	 *
 	 * Không dùng class này làm type-hint cho DI; hãy type-hint
-	 * \WPSPCORE\App\Widen\Lite\Http\Request (giống Laravel: type-hint Illuminate\Http\Request).
+	 * \WPSPCORE\App\Widen\Http\Request (giống Laravel: type-hint Illuminate\Http\Request).
 	 *
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request resetCache()
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request duplicate(?array $query = null, ?array $request = null, ?array $attributes = null, ?array $cookies = null, ?array $files = null, ?array $server = null)
+	 * @method static \WPSPCORE\App\Widen\Http\Request resetCache()
+	 * @method static \WPSPCORE\App\Widen\Http\Request duplicate(?array $query = null, ?array $request = null, ?array $attributes = null, ?array $cookies = null, ?array $files = null, ?array $server = null)
 	 * @method static string getRealMethod()
 	 * @method static string getMethod()
 	 * @method static string method()
@@ -25,7 +25,7 @@ else {
 	 * @method static bool isMethodSafe()
 	 * @method static bool isMethodIdempotent()
 	 * @method static bool isMethodCacheable()
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request setBaseUrl(string $baseUrl)
+	 * @method static \WPSPCORE\App\Widen\Http\Request setBaseUrl(string $baseUrl)
 	 * @method static string getBaseUrl()
 	 * @method static string getBasePath()
 	 * @method static string getScriptName()
@@ -106,7 +106,7 @@ else {
 	 * @method static void setDefaultRequestLocale(string $locale)
 	 * @method static string getContent()
 	 * @method static mixed json(?string $key = null, $default = null)
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request setJson(WPSPCORE\App\Widen\Lite\Http\ParameterBag $json)
+	 * @method static \WPSPCORE\App\Widen\Http\Request setJson(WPSPCORE\App\Widen\Http\ParameterBag $json)
 	 * @method static mixed server(?string $key = null, $default = null)
 	 * @method static array all($keys = null)
 	 * @method static mixed input(?string $key = null, $default = null)
@@ -134,11 +134,11 @@ else {
 	 * @method static mixed collect($key = null)
 	 * @method static array only(...$keys)
 	 * @method static array except(...$keys)
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request merge(array $input)
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request mergeIfMissing(array $input)
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request replace(array $input)
+	 * @method static \WPSPCORE\App\Widen\Http\Request merge(array $input)
+	 * @method static \WPSPCORE\App\Widen\Http\Request mergeIfMissing(array $input)
+	 * @method static \WPSPCORE\App\Widen\Http\Request replace(array $input)
 	 * @method static mixed get(string $key, mixed $default = null)
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request dump(...$keys)
+	 * @method static \WPSPCORE\App\Widen\Http\Request dump(...$keys)
 	 * @method static mixed dd(...$keys)
 	 * @method static bool hasCookie(string $key)
 	 * @method static mixed cookie(?string $key = null, $default = null)
@@ -159,16 +159,16 @@ else {
 	 * @method static bool isPrecognitive()
 	 * @method static mixed user($guard = null)
 	 * @method static \Closure getUserResolver()
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request setUserResolver(\Closure $callback)
+	 * @method static \WPSPCORE\App\Widen\Http\Request setUserResolver(\Closure $callback)
 	 * @method static mixed route(?string $param = null, $default = null)
 	 * @method static \Closure getRouteResolver()
-	 * @method static \WPSPCORE\App\Widen\Lite\Http\Request setRouteResolver(\Closure $callback)
+	 * @method static \WPSPCORE\App\Widen\Http\Request setRouteResolver(\Closure $callback)
 	 * @method static string fingerprint()
 	 * @method static mixed when($value = null, ?callable $callback = null, ?callable $default = null)
 	 * @method static mixed unless($value = null, ?callable $callback = null, ?callable $default = null)
 	 * @method static array toArray()
 	 *
-	 * @see \WPSPCORE\App\Widen\Lite\Http\Request
+	 * @see \WPSPCORE\App\Widen\Http\Request
 	 */
 	class Request extends Facade {
 
@@ -179,7 +179,7 @@ else {
 		/**
 		 * Object request thật (Laravel: Request::instance()).
 		 *
-		 * @return \WPSPCORE\App\Widen\Lite\Http\Request
+		 * @return \WPSPCORE\App\Widen\Http\Request
 		 */
 		public static function instance() {
 			return static::getFacadeRoot();

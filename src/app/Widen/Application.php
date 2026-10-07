@@ -9,6 +9,7 @@
 namespace WPSPCORE\App\Widen;
 
 use WPSPCORE\App\Widen\Http\Request;
+use WPSPCORE\App\Widen\Support\Facades\Facade;
 
 /**
  * Application - mô phỏng Illuminate\Foundation\Application bằng PHP thuần.
@@ -22,7 +23,6 @@ use WPSPCORE\App\Widen\Http\Request;
  * $bindings / $singletons; deferred khi có provides() và isDeferred() === true.
  */
 class Application extends Container {
-
 	public $name    = 'WPSP Framework';
 	public $version = 'Lite';
 
@@ -136,6 +136,7 @@ class Application extends Container {
 
 	protected function registerBaseBindings() {
 		static::setInstance($this);
+		Facade::setFacadeApplication($this);
 
 		$this->instance('app', $this);
 

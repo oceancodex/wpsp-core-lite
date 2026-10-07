@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
 use Symfony\Component\HttpFoundation\Response;
+use WPSP\App\Exceptions\HttpException;
 
 trait RouteTrait {
 	/**
@@ -886,7 +887,7 @@ trait RouteTrait {
 	 *   files, session, route/user resolver...).
 	 */
 	protected function resolveRequestForType(string $className) {
-		$isRequestType = is_a($className, \WPSPCORE\App\Widen\Http\Request::class, true)
+		$isRequestType = is_a($className, \WPSPCORE\App\Widen\Lite\Http\Request::class, true)
 			|| (class_exists('Illuminate\Http\Request', false) && is_a($className, 'Illuminate\Http\Request', true))
 			|| (class_exists('Symfony\Component\HttpFoundation\Request', false) && is_a($className, 'Symfony\Component\HttpFoundation\Request', true));
 
@@ -997,6 +998,9 @@ trait RouteTrait {
 			}
 			if (class_exists('Illuminate\Support\Facades\Facade')) {
 				Facade::setFacadeApplication($container);
+			}
+			else {
+				\WPSPCORE\App\Widen\Support\Facades\Facade::setFacadeApplication($container);
 			}
 			if (class_exists('Illuminate\Database\Eloquent\Model') && isset($container['db'])) {
 				Model::setConnectionResolver($container['db']);
