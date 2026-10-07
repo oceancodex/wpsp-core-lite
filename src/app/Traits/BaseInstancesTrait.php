@@ -21,21 +21,32 @@ trait BaseInstancesTrait {
 
 	use RouteTrait;
 
-	public $funcs         = null;
 	public $mainPath      = null;
 	public $rootNamespace = null;
 	public $prefixEnv     = null;
 	public $extraParams   = [];
+
+	public $appMode = null;
+	public $funcs   = null;
+
 	/** @var \Illuminate\Http\Request | \WPSPCORE\App\Widen\Commons\Http\Request */
-	public $request       = null;
+	public $request = null;
 
 	public function baseInstanceConstruct($mainPath = null, $rootNamespace = null, $prefixEnv = null, $extraParams = []) {
 		$this->beforeInstanceConstruct();
 		$this->beforeConstruct();
-		if ($mainPath)      $this->mainPath      = $mainPath;
+		if ($mainPath) $this->mainPath = $mainPath;
 		if ($rootNamespace) $this->rootNamespace = $rootNamespace;
-		if ($prefixEnv)     $this->prefixEnv     = $prefixEnv;
-		if ($extraParams)   $this->extraParams   = $extraParams;
+		if ($prefixEnv) $this->prefixEnv = $prefixEnv;
+
+		if ($extraParams) {
+			$this->extraParams = $extraParams;
+
+			if (isset($this->extraParams['app_mode'])) {
+				$this->appMode = $this->extraParams['app_mode'];
+			}
+		}
+
 		$this->prepareFuncs();
 		$this->prepareRequest();
 		$this->afterConstruct();
@@ -94,43 +105,56 @@ trait BaseInstancesTrait {
 	public function prepareRequest() {
 		if ($this->request) return;
 
-		if (isset($this->funcs) && $funcs = $this->funcs) {
+		$lite = $this->isLiteMode();
+
+		if ($this->funcs) {
+			$funcs = $this->funcs;
+
 			if (isset($funcs::$request) && $funcs::$request) {
 				$this->request = $funcs::$request;
 			}
 			else {
-				$this->request = $this->funcs->_getApplication('request');
+				$this->request = $funcs->_getApplication('request');
 
-				if (!$this->request && !class_exists('Illuminate\Http\Request')) {
-					$request = $this->funcs->_getRequestClass()::capture();
-					$this->request = $request;
+				if (!$this->request) {
+					$this->request = $lite
+						? WPSPCORE_Request::capture()
+						: $funcs->_getRequestClass()::capture();
 				}
 			}
 		}
 		else {
-			$this->request = WPSPCORE_Request::capture();
+			$this->request = $lite
+				? WPSPCORE_Request::capture()
+				: IlluminateRequest::capture();
 
-			if (class_exists('Illuminate\Http\Request')) {
-				// Set user resolver.
-				if (!$this->request?->getUserResolver()) {
-					$this->request?->setUserResolver(function() {
-						if (!$this->funcs->_getApplication()->bound('session.store')) {
-							return null;
-						}
+			if (!$lite) {
+				$this->request->setUserResolver(function() {
+					$app = $this->funcs?->_getApplication();
+					if (!$app || !$app->bound('session.store')) return null;
 
-						$store = $this->funcs->_getApplication('session.store');
+					$store = $app->make('session.store');
+					if (!$store->isStarted()) return null;
 
-						if (!$store->isStarted()) {
-							return null;
-						}
-
-						return $this->funcs?->_auth()?->user();
-					});
-				}
+					return $this->funcs->_auth()?->user();
+				});
 			}
 		}
 
 		unset($this->extraParams['request']);
+	}
+
+	/**
+	 * Mode phải do plugin khai báo tường minh qua extraParams['app_mode'].
+	 * Chỉ fallback sang class_exists khi không có, vì class_exists bị
+	 * "rò" giữa các plugin trong cùng một request.
+	 */
+	protected function isLiteMode(): bool {
+		if ($this->appMode !== null) {
+			return $this->appMode === 'lite';
+		}
+
+		return !class_exists(IlluminateRequest::class);
 	}
 
 	/*
@@ -149,16 +173,16 @@ trait BaseInstancesTrait {
 
 	public function wpspCall($method, $class = null, $args = []) {
 //		if ($this->funcs && $this->request) {
-			$path        = $this->extraParams['path'] ?? null;
-			$fullPath    = $this->extraParams['full_path'] ?? null;
-			$requestPath = ltrim($this->request?->getRequestUri() ?? null, '/\\');
+		$path        = $this->extraParams['path'] ?? null;
+		$fullPath    = $this->extraParams['full_path'] ?? null;
+		$requestPath = ltrim($this->request?->getRequestUri() ?? null, '/\\');
 
-			if ($class) {
-				return $this->autoResolveAndCall($path, $fullPath, $requestPath, $class, $method, $args);
-			}
-			else {
-				return $this->autoResolveAndCall($path, $fullPath, $requestPath, $this, $method, $args);
-			}
+		if ($class) {
+			return $this->autoResolveAndCall($path, $fullPath, $requestPath, $class, $method, $args);
+		}
+		else {
+			return $this->autoResolveAndCall($path, $fullPath, $requestPath, $this, $method, $args);
+		}
 //		}
 
 //		return null;
