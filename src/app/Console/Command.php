@@ -8,8 +8,8 @@
 
 namespace WPSPCORELITE\App\Console;
 
-use WPSPCORELITE\App\Widen\Application;
-use WPSPCORELITE\App\Widen\Commands;
+use WPSPCORELITE\App\Application;
+use WPSPCORELITE\App\Commands;
 
 if (class_exists('Illuminate\Console\Command')) {
 	abstract class Command extends \Illuminate\Console\Command {}
