@@ -22,7 +22,7 @@ use Illuminate\Process\Factory as ProcessFactory;
 use Illuminate\Support\Timebox;
 use WPSPCORE\App\Http\Middleware\WPSPStartSession;
 use WPSPCORE\App\View\Directives\adminpagemetaboxes;
-use WPSPCORE\App\Widen\Lite\Application as WPSPLiteApplication;
+use WPSPCORE\App\Widen\Application as WPSPLiteApplication;
 
 abstract class WPSP extends BaseInstances {
 

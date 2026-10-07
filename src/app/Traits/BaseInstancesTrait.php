@@ -127,7 +127,7 @@ trait BaseInstancesTrait {
 				}
 			}
 			else {
-				$request = \WPSPCORE\App\Widen\Lite\Http\Request::capture();
+				$request = \WPSPCORE\App\Widen\Http\Request::capture();
 				$this->request = $request;
 			}
 		}

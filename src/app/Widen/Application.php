@@ -8,7 +8,7 @@
 
 namespace WPSPCORE\App\Widen\Lite;
 
-use WPSPCORE\App\Widen\Lite\Http\Request;
+use WPSPCORE\App\Widen\Http\Request;
 
 /**
  * Application - mô phỏng Illuminate\Foundation\Application bằng PHP thuần.
