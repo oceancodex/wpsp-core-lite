@@ -8,7 +8,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
 use Symfony\Component\HttpFoundation\Response;
-use WPSP\App\Exceptions\HttpException;
 
 trait RouteTrait {
 	/**
