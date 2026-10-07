@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\PostTypeColumns;
+namespace WPSPCORELITE\App\Routes\PostTypeColumns;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait PostTypeColumnsRouteTrait {
 

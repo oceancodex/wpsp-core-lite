@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Process;
+namespace WPSPCORELITE\App\Process;
 
 use Illuminate\Process\Factory as IlluminateProcess;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Process

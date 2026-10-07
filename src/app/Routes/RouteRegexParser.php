@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Routes;
+namespace WPSPCORELITE\App\Routes;
 
 class RouteRegexParser {
 

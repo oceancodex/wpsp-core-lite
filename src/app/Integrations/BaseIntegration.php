@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Integrations;
+namespace WPSPCORELITE\App\Integrations;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 class BaseIntegration extends BaseInstances {
 

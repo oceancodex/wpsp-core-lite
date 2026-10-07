@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Http\Controllers;
+namespace WPSPCORELITE\App\Http\Controllers;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseController extends BaseInstances {
 

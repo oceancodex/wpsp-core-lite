@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\NavigationMenus\Locations;
+namespace WPSPCORELITE\App\Routes\NavigationMenus\Locations;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this nav_location(string $location, callable|array $callback, array $args = [])

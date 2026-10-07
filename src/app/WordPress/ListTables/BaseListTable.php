@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\ListTables;
+namespace WPSPCORELITE\App\WordPress\ListTables;
 
-use WPSPCORE\App\Traits\BaseInstancesTrait;
+use WPSPCORELITE\App\Traits\BaseInstancesTrait;
 
 /**
  * @method bulk_edit_form()

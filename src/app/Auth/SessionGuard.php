@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Auth;
+namespace WPSPCORELITE\App\Auth;
 
 use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Contracts\Session\Session;
@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 class SessionGuard extends \Illuminate\Auth\SessionGuard {
 
-	/** @var \WPSPCORE\Funcs|null */
+	/** @var \WPSPCORELITE\Funcs|null */
 	public $funcs = null;
 
 	/**

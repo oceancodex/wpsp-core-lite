@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\ParallelTesting;
+namespace WPSPCORELITE\App\ParallelTesting;
 
 use Illuminate\Testing\ParallelTesting as IlluminateParallelTesting;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\ParallelTesting

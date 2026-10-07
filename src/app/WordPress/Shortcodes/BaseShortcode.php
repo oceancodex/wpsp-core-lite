@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\Shortcodes;
+namespace WPSPCORELITE\App\WordPress\Shortcodes;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseShortcode extends BaseInstances {
 

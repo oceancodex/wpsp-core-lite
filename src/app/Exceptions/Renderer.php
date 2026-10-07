@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Exceptions;
+namespace WPSPCORELITE\App\Exceptions;
 
 use Illuminate\Http\Request;
-use WPSPCORE\App\Routes\RouteManager;
+use WPSPCORELITE\App\Routes\RouteManager;
 
 class Renderer extends \Illuminate\Foundation\Exceptions\Renderer\Renderer {
 

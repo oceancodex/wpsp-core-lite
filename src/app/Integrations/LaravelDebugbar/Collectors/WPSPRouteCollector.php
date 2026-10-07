@@ -1,13 +1,13 @@
 <?php
 
-namespace WPSPCORE\App\Integrations\LaravelDebugbar\Collectors;
+namespace WPSPCORELITE\App\Integrations\LaravelDebugbar\Collectors;
 
 use DebugBar\DataCollector\DataCollector;
 use DebugBar\DataCollector\Renderable;
 
 class WPSPRouteCollector extends DataCollector implements Renderable {
 
-	/** @var \WPSPCORE\App\Routes\RouteManager */
+	/** @var \WPSPCORELITE\App\Routes\RouteManager */
 	public $routeManagerInstance;
 
 	/*

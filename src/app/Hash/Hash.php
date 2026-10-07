@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Hash;
+namespace WPSPCORELITE\App\Hash;
 
 use Illuminate\Hashing\HashManager as IlluminateHash;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Hash

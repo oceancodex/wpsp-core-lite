@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Routes;
+namespace WPSPCORELITE\App\Routes;
 
 use Illuminate\Support\Facades\File;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 class RouteMap extends BaseInstances {
 

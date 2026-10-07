@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Cookie;
+namespace WPSPCORELITE\App\Cookie;
 
 use Illuminate\Cookie\CookieJar as IlluminateCookie;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Cookie

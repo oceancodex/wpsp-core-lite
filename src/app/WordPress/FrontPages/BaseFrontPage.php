@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\FrontPages;
+namespace WPSPCORELITE\App\WordPress\FrontPages;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseFrontPage extends BaseInstances {
 

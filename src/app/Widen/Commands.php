@@ -6,9 +6,9 @@
  * Time: 8:56 CH
  */
 
-namespace WPSPCORE\App\Widen;
+namespace WPSPCORELITE\App\Widen;
 
-use WPSPCORE\App\Console\Command;
+use WPSPCORELITE\App\Console\Command;
 
 /**
  * Console kernel - mô phỏng Illuminate\Foundation\Console\Kernel + Symfony Console Application.

@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Validator;
+namespace WPSPCORELITE\App\Validator;
 
 use Illuminate\Validation\Factory as IlluminateValidator;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Validator

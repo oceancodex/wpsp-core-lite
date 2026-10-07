@@ -1,10 +1,10 @@
 <?php
 
-namespace WPSPCORE\App\RateLimiter;
+namespace WPSPCORELITE\App\RateLimiter;
 
 use Illuminate\Cache\RateLimiter as IlluminateRateLimiter;
 use Illuminate\Cache\CacheManager;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\RateLimiter

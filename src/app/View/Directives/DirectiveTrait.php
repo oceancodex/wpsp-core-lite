@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\View\Directives;
+namespace WPSPCORELITE\App\View\Directives;
 
 trait DirectiveTrait {
 

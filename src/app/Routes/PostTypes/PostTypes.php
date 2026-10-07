@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\PostTypes;
+namespace WPSPCORELITE\App\Routes\PostTypes;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this post_type(string $postType, callable|array $callback, array $args = [])

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\UserMetaBoxes;
+namespace WPSPCORELITE\App\WordPress\UserMetaBoxes;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseUserMetaBox extends BaseInstances {
 

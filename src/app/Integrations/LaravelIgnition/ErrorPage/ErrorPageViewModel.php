@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Integrations\LaravelIgnition\ErrorPage;
+namespace WPSPCORELITE\App\Integrations\LaravelIgnition\ErrorPage;
 
 class ErrorPageViewModel extends \Spatie\Ignition\ErrorPage\ErrorPageViewModel {
 

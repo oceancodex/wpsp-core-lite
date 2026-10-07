@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\RewriteFrontPages;
+namespace WPSPCORELITE\App\WordPress\RewriteFrontPages;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseRewriteFrontPage extends BaseInstances {
 

@@ -1,15 +1,15 @@
 <?php
 
-namespace WPSPCORE\App\Traits;
+namespace WPSPCORELITE\App\Traits;
 
 use Illuminate\Http\Request as IlluminateRequest;
-use WPSPCORE\App\Widen\Http\Request as WPSPCORE_Request;
-use WPSPCORE\App\Routes\RouteTrait;
+use WPSPCORELITE\App\Widen\Http\Request as WPSPCORE_Request;
+use WPSPCORELITE\App\Routes\RouteTrait;
 
 /**
  * BaseInstancesTrait.
  *
- * @property \WPSPCORE\Funcs          $funcs
+ * @property \WPSPCORELITE\Funcs          $funcs
  * @property \Illuminate\Http\Request $request
  * @method $this __wpspConstruct
  * @method $this __instanceConstruct
@@ -29,12 +29,13 @@ trait BaseInstancesTrait {
 	public $appMode = null;
 	public $funcs   = null;
 
-	/** @var \Illuminate\Http\Request | \WPSPCORE\App\Widen\Commons\Http\Request */
+	/** @var \Illuminate\Http\Request | \WPSPCORELITE\App\Widen\Commons\Http\Request */
 	public $request = null;
 
 	public function baseInstanceConstruct($mainPath = null, $rootNamespace = null, $prefixEnv = null, $extraParams = []) {
 		$this->beforeInstanceConstruct();
 		$this->beforeConstruct();
+
 		if ($mainPath) $this->mainPath = $mainPath;
 		if ($rootNamespace) $this->rootNamespace = $rootNamespace;
 		if ($prefixEnv) $this->prefixEnv = $prefixEnv;
@@ -87,7 +88,7 @@ trait BaseInstancesTrait {
 
 		if (isset($this->extraParams['funcs']) && $this->extraParams['funcs']) {
 			if (is_bool($this->extraParams['funcs'])) {
-				$this->funcs = new \WPSPCORE\Funcs(
+				$this->funcs = new \WPSPCORELITE\Funcs(
 					$this->mainPath,
 					$this->rootNamespace,
 					$this->prefixEnv,
@@ -150,7 +151,7 @@ trait BaseInstancesTrait {
 	 * "rò" giữa các plugin trong cùng một request.
 	 */
 	protected function isLiteMode(): bool {
-		if ($this->appMode !== null) {
+		if ($this->appMode !== null && $this->appMode !== 'full') {
 			return $this->appMode === 'lite';
 		}
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Widgets;
+namespace WPSPCORELITE\App\Routes\Widgets;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this widget(string $id_base, callable|array $callback, array $args = [])

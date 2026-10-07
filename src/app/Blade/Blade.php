@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Blade;
+namespace WPSPCORELITE\App\Blade;
 
 use Illuminate\View\Compilers\BladeCompiler as IlluminateBlade;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Blade

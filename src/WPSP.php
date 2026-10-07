@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE;
+namespace WPSPCORELITE;
 
 use Illuminate\Auth\AuthManager;
 use Illuminate\Container\Container;
@@ -19,9 +19,9 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Exceptions\Renderer\Listener as ExceptionRendererListener;
 use Illuminate\Process\Factory as ProcessFactory;
 use Illuminate\Support\Timebox;
-use WPSPCORE\App\Http\Middleware\WPSPStartSession;
-use WPSPCORE\App\View\Directives\adminpagemetaboxes;
-use WPSPCORE\App\Widen\Application as WPSPLiteApplication;
+use WPSPCORELITE\App\Http\Middleware\WPSPStartSession;
+use WPSPCORELITE\App\View\Directives\adminpagemetaboxes;
+use WPSPCORELITE\App\Widen\Application as WPSPLiteApplication;
 
 abstract class WPSP extends BaseInstances {
 
@@ -107,11 +107,11 @@ abstract class WPSP extends BaseInstances {
 		return array_merge(
 			$this->funcs->_getAllClassesInDir(
 				__DIR__ . '/app/Console/Commands',
-				'WPSPCORE\App\Console\Commands'
+				'WPSPCORELITE\App\Console\Commands'
 			),
 			$this->funcs->_getAllClassesInDir(
 				__DIR__ . '/app/Console/Commands/Extends',
-				'WPSPCORE\App\Console\Commands\Extends'
+				'WPSPCORELITE\App\Console\Commands\Extends'
 			),
 			$this->funcs->_getAllClassesInDir(
 				$this->funcs->_getAppPath('/Widen/Commands'),
@@ -482,7 +482,7 @@ abstract class WPSP extends BaseInstances {
 			$auth->extend('session', function($app, $name, $config) use ($auth) {
 				$provider = $auth->createUserProvider($config['provider']);
 
-				$guard = new \WPSPCORE\App\Auth\SessionGuard(
+				$guard = new \WPSPCORELITE\App\Auth\SessionGuard(
 					$name,
 					$provider,
 					$app['session.store'],

@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Widen\Support\Facades;
+namespace WPSPCORELITE\App\Widen\Support\Facades;
 
 if (class_exists('Illuminate\Support\Facades\Facade')) {
 	abstract class Facade extends \Illuminate\Support\Facades\Facade {}
@@ -19,7 +19,7 @@ else {
 	 */
 	abstract class Facade {
 
-		/** @var \WPSPCORE\App\Widen\Container|\ArrayAccess|null */
+		/** @var \WPSPCORELITE\App\Widen\Container|\ArrayAccess|null */
 		protected static $app;
 
 		/** accessor => instance thay thế (swap()). */

@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Pipeline;
+namespace WPSPCORELITE\App\Pipeline;
 
 use \Illuminate\Pipeline\Pipeline as IlluminatePipeline;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Pipeline

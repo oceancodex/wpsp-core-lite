@@ -1,10 +1,10 @@
 <?php
 
-namespace WPSPCORE\App\Storage;
+namespace WPSPCORELITE\App\Storage;
 
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager as IlluminateStorage;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Storage

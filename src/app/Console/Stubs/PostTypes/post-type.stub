@@ -11,7 +11,7 @@ use {{ core_namespace }}\App\WordPress\PostTypes\BasePostType;
  *
  * @see https://developer.wordpress.org/reference/functions/register_post_type/
  * @see https://developer.wordpress.org/reference/functions/get_post_type_labels/
- * @mixin \WPSPCORE\App\WordPress\PostTypes\PostTypeData
+ * @mixin \WPSPCORELITE\App\WordPress\PostTypes\PostTypeData
  */
 class {{ class_name }} extends BasePostType {
 

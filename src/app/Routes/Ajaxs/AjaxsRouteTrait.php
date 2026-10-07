@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Ajaxs;
+namespace WPSPCORELITE\App\Routes\Ajaxs;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait AjaxsRouteTrait {
 

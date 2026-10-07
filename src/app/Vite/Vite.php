@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Vite;
+namespace WPSPCORELITE\App\Vite;
 
 use Illuminate\Foundation\Vite as IlluminateVite;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Vite

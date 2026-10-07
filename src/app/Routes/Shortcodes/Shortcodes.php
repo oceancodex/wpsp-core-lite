@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Shortcodes;
+namespace WPSPCORELITE\App\Routes\Shortcodes;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this shortcode(string $shortcode, callable|array $callback, array $args = [])

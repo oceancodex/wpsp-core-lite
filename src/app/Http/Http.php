@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Http;
+namespace WPSPCORELITE\App\Http;
 
 use Illuminate\Http\Client\Factory as IlluminateHttp;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Http

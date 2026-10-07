@@ -1,11 +1,11 @@
 <?php
 
-namespace WPSPCORE\App\Console\Commands;
+namespace WPSPCORELITE\App\Console\Commands;
 
-use WPSPCORE\App\Console\Command;
-use WPSPCORE\App\File\File;
+use WPSPCORELITE\App\Console\Command;
+use WPSPCORELITE\App\File\File;
 use Illuminate\Support\Str;
-use WPSPCORE\App\Console\Traits\CommandsTrait;
+use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeDashboardWidgetCommand extends Command {
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE;
+namespace WPSPCORELITE;
 
-use WPSPCORE\App\Traits\BaseInstancesTrait;
+use WPSPCORELITE\App\Traits\BaseInstancesTrait;
 
 abstract class BaseInstances {
 

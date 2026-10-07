@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\DashboardWidgets;
+namespace WPSPCORELITE\App\WordPress\DashboardWidgets;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseDashboardWidget extends BaseInstances {
 

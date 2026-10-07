@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Exceptions;
+namespace WPSPCORELITE\App\Exceptions;
 
 use Illuminate\Contracts\Debug\ExceptionHandler as IlluminateExceptions;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Exceptions

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\ThemeTemplates;
+namespace WPSPCORELITE\App\Routes\ThemeTemplates;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this theme_template(string $name, callable|array $callback, array $args = [])

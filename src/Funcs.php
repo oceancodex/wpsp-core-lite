@@ -1,19 +1,19 @@
 <?php
 
-namespace WPSPCORE;
+namespace WPSPCORELITE;
 
 use Carbon\Carbon;
-use WPSPCORE\App\Widen\Http\Request;
+use WPSPCORELITE\App\Widen\Http\Request;
 use Illuminate\View\View;
 use NumberFormatter;
-use WPSPCORE\App\Routes\RouteRegexParser;
+use WPSPCORELITE\App\Routes\RouteRegexParser;
 
 /**
  * @method static mixed getWPSP()
  * @method static string getWPSPClass()
  * @method static mixed getApplication($abstract = null, array $parameters = [])
- * @method static \WPSPCORE\App\Routes\RouteMap|null getRouteMap()
- * @method static \WPSPCORE\App\Routes\RouteManager|null getRouteManager()
+ * @method static \WPSPCORELITE\App\Routes\RouteMap|null getRouteMap()
+ * @method static \WPSPCORELITE\App\Routes\RouteManager|null getRouteManager()
  *
  * @method static string getMainPath($path = null)
  * @method static string getRootNamespace()
@@ -181,7 +181,7 @@ class Funcs extends BaseInstances {
 	}
 
 	/**
-	 * @return \WPSPCORE\App\Routes\RouteMap
+	 * @return \WPSPCORELITE\App\Routes\RouteMap
 	 */
 	public function _getRouteMap() {
 		try {
@@ -194,7 +194,7 @@ class Funcs extends BaseInstances {
 	}
 
 	/**
-	 * @return \WPSPCORE\App\Routes\RouteManager
+	 * @return \WPSPCORELITE\App\Routes\RouteManager
 	 */
 	public function _getRouteManager() {
 		try {

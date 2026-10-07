@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\AdminPages;
+namespace WPSPCORELITE\App\WordPress\AdminPages;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseAdminPage extends BaseInstances {
 

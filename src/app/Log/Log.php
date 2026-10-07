@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Log;
+namespace WPSPCORELITE\App\Log;
 
 use Illuminate\Log\LogManager as IlluminateLog;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Log

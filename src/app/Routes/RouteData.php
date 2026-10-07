@@ -1,12 +1,12 @@
 <?php
 
-namespace WPSPCORE\App\Routes;
+namespace WPSPCORELITE\App\Routes;
 
 class RouteData {
 
 	public $type          = null;		// Loại route.
 	public $route         = null;		// Class của Route trong WPSP: \WPSP\App\Instances\Routes\Apis
-	public $parentRoute   = null;		// Class cha của Route trong WPSPCORE: \WPSPCORE\Routes\Apis\Apis
+	public $parentRoute   = null;		// Class cha của Route trong WPSPCORE: \WPSPCORELITE\Routes\Apis\Apis
 	public $method        = null;		// HTTP method (GET, POST, ...)
 	public $path          = null;		// Path của route
 	public $fullPath      = null;		// Full path sau khi áp dụng prefix

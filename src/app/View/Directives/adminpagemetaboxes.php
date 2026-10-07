@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\View\Directives;
+namespace WPSPCORELITE\App\View\Directives;
 
 use Illuminate\View\Compilers\BladeCompiler;
 
@@ -60,7 +60,7 @@ class adminpagemetaboxes extends BaseDirective {
 		$prefixEnv = $this->prefixEnv;
 		return "<?php
 					\$__adminMetaBoxJsonConfigs = '$expression';
-					echo \\WPSPCORE\\App\\View\\Directives\\adminpagemetaboxes::render(\$__adminMetaBoxJsonConfigs, '$rootNamespace');
+					echo \\WPSPCORELITE\\App\\View\\Directives\\adminpagemetaboxes::render(\$__adminMetaBoxJsonConfigs, '$rootNamespace');
 					?>";
 	}
 
@@ -79,7 +79,7 @@ class adminpagemetaboxes extends BaseDirective {
 			if ($adminPageMetaBoxName) {
 				$adminPageMenuArgs = $jsonConfigs['admin_page_metabox_args'] ?? null;
 
-				/** @var \WPSPCORE\Funcs|\WPSP\Funcs $funcs */
+				/** @var \WPSPCORELITE\Funcs|\WPSP\Funcs $funcs */
 				$funcs = '\\' . $rootNamespace . '\\Funcs';
 				$routeMap = $funcs::instance()->_getRouteMap();
 				$route = $routeMap->getRoute('AdminPageMetaBoxes', $adminPageMetaBoxName);

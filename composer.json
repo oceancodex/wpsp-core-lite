@@ -14,8 +14,8 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"WPSPCORE\\": "src/",
-			"WPSPCORE\\App\\": "src/app/"
+			"WPSPCORELITE\\": "src/",
+			"WPSPCORELITE\\App\\": "src/app/"
 		},
 		"files": [
 		]

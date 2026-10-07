@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Traits;
+namespace WPSPCORELITE\App\Traits;
 
 trait HookRunnerTrait {
 

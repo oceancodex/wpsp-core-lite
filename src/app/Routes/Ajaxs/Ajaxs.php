@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Ajaxs;
+namespace WPSPCORELITE\App\Routes\Ajaxs;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this get(string $action, callable|array $callback, array $args = [])

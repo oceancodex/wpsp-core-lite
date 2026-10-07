@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Date;
+namespace WPSPCORELITE\App\Date;
 
 use Illuminate\Support\DateFactory as IlluminateDate;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Date

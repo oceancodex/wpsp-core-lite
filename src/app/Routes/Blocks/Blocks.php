@@ -1,7 +1,7 @@
 <?php
-namespace WPSPCORE\App\Routes\Blocks;
+namespace WPSPCORELITE\App\Routes\Blocks;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this block(string $name, callable|array $callback, array $args = [])

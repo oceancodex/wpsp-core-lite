@@ -1,13 +1,13 @@
 <?php
 
-namespace WPSPCORE\App\Exceptions;
+namespace WPSPCORELITE\App\Exceptions;
 
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Exceptions\Renderer\Listener;
 use Illuminate\Http\Request;
 use Symfony\Component\ErrorHandler\Exception\FlattenException;
-use WPSPCORE\App\Routes\RouteManager;
+use WPSPCORELITE\App\Routes\RouteManager;
 
 class Exception extends \Illuminate\Foundation\Exceptions\Renderer\Exception {
 

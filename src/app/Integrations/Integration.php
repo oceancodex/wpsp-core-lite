@@ -1,10 +1,10 @@
 <?php
 
-namespace WPSPCORE\App\Integrations;
+namespace WPSPCORELITE\App\Integrations;
 
 use Illuminate\Contracts\Container\BindingResolutionException;
-use WPSPCORE\App\Routes\RouteTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Routes\RouteTrait;
+use WPSPCORELITE\BaseInstances;
 
 class Integration extends BaseInstances {
 

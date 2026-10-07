@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Actions;
+namespace WPSPCORELITE\App\Routes\Actions;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this action(string $action, callable|array $callback, array $args = [])

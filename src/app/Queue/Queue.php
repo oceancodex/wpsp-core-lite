@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Queue;
+namespace WPSPCORELITE\App\Queue;
 
 use Illuminate\Queue\QueueManager as IlluminateQueue;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Queue

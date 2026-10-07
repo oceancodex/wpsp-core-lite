@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Lang;
+namespace WPSPCORELITE\App\Lang;
 
 use Illuminate\Translation\Translator as IlluminateLang;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Lang

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\AdminBarMenus;
+namespace WPSPCORELITE\App\Routes\AdminBarMenus;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait AdminBarMenusRouteTrait {
 

@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Concurrency;
+namespace WPSPCORELITE\App\Concurrency;
 
 use Illuminate\Concurrency\ConcurrencyManager as IlluminateConcurrency;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Concurrency

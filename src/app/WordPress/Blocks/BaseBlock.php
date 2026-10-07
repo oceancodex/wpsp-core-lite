@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\Blocks;
+namespace WPSPCORELITE\App\WordPress\Blocks;
 
 use Illuminate\Support\Facades\File;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseBlock extends BaseInstances {
 

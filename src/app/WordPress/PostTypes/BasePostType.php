@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\PostTypes;
+namespace WPSPCORELITE\App\WordPress\PostTypes;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @property $labels

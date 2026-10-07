@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Schedules;
+namespace WPSPCORELITE\App\Routes\Schedules;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this schedule(string $hook, callable|array $callback, array $args = [])

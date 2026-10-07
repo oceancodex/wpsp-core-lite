@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Config;
+namespace WPSPCORELITE\App\Config;
 
 use Illuminate\Config\Repository as IlluminateConfig;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Config

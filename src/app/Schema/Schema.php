@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Schema;
+namespace WPSPCORELITE\App\Schema;
 
 use Illuminate\Database\Schema\Builder as IlluminateSchema;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Schema

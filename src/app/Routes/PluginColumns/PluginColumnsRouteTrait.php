@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\PluginColumns;
+namespace WPSPCORELITE\App\Routes\PluginColumns;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait PluginColumnsRouteTrait {
 

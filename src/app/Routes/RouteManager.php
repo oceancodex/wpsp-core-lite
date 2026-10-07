@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes;
+namespace WPSPCORELITE\App\Routes;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 class RouteManager extends BaseInstances {
 

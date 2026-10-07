@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Providers;
+namespace WPSPCORELITE\App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 

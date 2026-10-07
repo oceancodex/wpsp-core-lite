@@ -1,10 +1,10 @@
 <?php
 
-namespace WPSPCORE\App\Broadcast;
+namespace WPSPCORELITE\App\Broadcast;
 
 use Illuminate\Broadcasting\BroadcastManager as IlluminateBroadcast;
 use Illuminate\Contracts\Broadcasting\Factory as IlluminateBroadcastFactory;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Broadcast

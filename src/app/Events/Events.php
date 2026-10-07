@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Events;
+namespace WPSPCORELITE\App\Events;
 
 use Illuminate\Events\Dispatcher as IlluminateEvents;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Event

@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\URL;
+namespace WPSPCORELITE\App\URL;
 
 use Illuminate\Routing\UrlGenerator as IlluminateUrl;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\URL

@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Bus;
+namespace WPSPCORELITE\App\Bus;
 
 use Illuminate\Contracts\Bus\Dispatcher as IlluminateBus;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Bus

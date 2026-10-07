@@ -1,10 +1,10 @@
 <?php
 
-namespace WPSPCORE\App\Session;
+namespace WPSPCORELITE\App\Session;
 
 use Illuminate\Cookie\CookieJar;
 use Illuminate\Session\SessionManager as IlluminateSession;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Session

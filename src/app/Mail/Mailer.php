@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Mail;
+namespace WPSPCORELITE\App\Mail;
 
 use Illuminate\Mail\Mailer as IlluminateMailer;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Mail

@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Auth;
+namespace WPSPCORELITE\App\Auth;
 
 use Illuminate\Contracts\Auth\PasswordBroker;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Password

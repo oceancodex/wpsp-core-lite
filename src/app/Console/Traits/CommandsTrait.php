@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Console\Traits;
+namespace WPSPCORELITE\App\Console\Traits;
 
-use WPSPCORE\App\File\File;
-use WPSPCORE\Funcs;
+use WPSPCORELITE\App\File\File;
+use WPSPCORELITE\Funcs;
 
 /**
  * @property Funcs $funcs

@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\PluginColumns;
+namespace WPSPCORELITE\App\WordPress\PluginColumns;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BasePluginColumn extends BaseInstances {
 

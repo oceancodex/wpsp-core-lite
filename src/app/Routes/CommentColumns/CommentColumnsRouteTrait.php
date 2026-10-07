@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\CommentColumns;
+namespace WPSPCORELITE\App\Routes\CommentColumns;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait CommentColumnsRouteTrait {
 

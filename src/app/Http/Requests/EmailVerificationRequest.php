@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Http\Requests;
+namespace WPSPCORELITE\App\Http\Requests;
 
 use Illuminate\Foundation\Auth\EmailVerificationRequest as Request;
 

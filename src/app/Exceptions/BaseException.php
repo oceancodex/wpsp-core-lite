@@ -1,5 +1,5 @@
 <?php
-namespace WPSPCORE\App\Exceptions;
+namespace WPSPCORELITE\App\Exceptions;
 
 class BaseException extends \Exception {
 

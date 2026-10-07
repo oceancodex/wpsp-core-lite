@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\Schedules;
+namespace WPSPCORELITE\App\WordPress\Schedules;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseSchedule extends BaseInstances {
 

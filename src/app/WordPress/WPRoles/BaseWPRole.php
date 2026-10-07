@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\WPRoles;
+namespace WPSPCORELITE\App\WordPress\WPRoles;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseWPRole extends BaseInstances {
 

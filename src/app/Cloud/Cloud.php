@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Cloud;
+namespace WPSPCORELITE\App\Cloud;
 
 use Illuminate\Foundation\Cloud\CloudManager as IlluminateCloud;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Cloud

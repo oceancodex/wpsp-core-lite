@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Routes;
+namespace WPSPCORELITE\App\Routes;
 
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
@@ -886,7 +886,7 @@ trait RouteTrait {
 	 *   files, session, route/user resolver...).
 	 */
 	protected function resolveRequestForType(string $className) {
-		$isRequestType = is_a($className, \WPSPCORE\App\Widen\Http\Request::class, true)
+		$isRequestType = is_a($className, \WPSPCORELITE\App\Widen\Http\Request::class, true)
 			|| (class_exists('Illuminate\Http\Request', false) && is_a($className, 'Illuminate\Http\Request', true))
 			|| (class_exists('Symfony\Component\HttpFoundation\Request', false) && is_a($className, 'Symfony\Component\HttpFoundation\Request', true));
 
@@ -999,7 +999,7 @@ trait RouteTrait {
 				Facade::setFacadeApplication($container);
 			}
 			else {
-				\WPSPCORE\App\Widen\Support\Facades\Facade::setFacadeApplication($container);
+				\WPSPCORELITE\App\Widen\Support\Facades\Facade::setFacadeApplication($container);
 			}
 			if (class_exists('Illuminate\Database\Eloquent\Model') && isset($container['db'])) {
 				Model::setConnectionResolver($container['db']);

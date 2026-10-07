@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Http\Middleware;
+namespace WPSPCORELITE\App\Http\Middleware;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseMiddleware extends BaseInstances {
 

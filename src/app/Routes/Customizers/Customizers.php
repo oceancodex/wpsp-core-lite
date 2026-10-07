@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Customizers;
+namespace WPSPCORELITE\App\Routes\Customizers;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this customize(string $name, callable|array $callback, array $args = [])

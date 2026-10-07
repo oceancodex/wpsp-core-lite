@@ -1,13 +1,13 @@
 <?php
 
-namespace WPSPCORE\App\Integrations\LaravelIgnition;
+namespace WPSPCORELITE\App\Integrations\LaravelIgnition;
 
 use Illuminate\Http\Request;
 use Spatie\FlareClient\Report;
 use Spatie\Ignition\ErrorPage\Renderer;
 use Spatie\LaravelIgnition\ContextProviders\LaravelRequestContextProvider;
-use WPSPCORE\App\Integrations\LaravelIgnition\ContextProviders\WPSPRequestContextProvider;
-use WPSPCORE\App\Integrations\LaravelIgnition\ErrorPage\ErrorPageViewModel;
+use WPSPCORELITE\App\Integrations\LaravelIgnition\ContextProviders\WPSPRequestContextProvider;
+use WPSPCORELITE\App\Integrations\LaravelIgnition\ErrorPage\ErrorPageViewModel;
 
 class Ignition extends \Spatie\Ignition\Ignition {
 

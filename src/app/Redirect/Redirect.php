@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Redirect;
+namespace WPSPCORELITE\App\Redirect;
 
 use \Illuminate\Routing\Redirector as IlluminateRedirect;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Redirect

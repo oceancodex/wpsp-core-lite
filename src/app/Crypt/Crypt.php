@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Crypt;
+namespace WPSPCORELITE\App\Crypt;
 
 use Illuminate\Encryption\Encrypter as IlluminateCrypt;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Crypt

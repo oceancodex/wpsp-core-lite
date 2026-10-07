@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Schedule;
+namespace WPSPCORELITE\App\Schedule;
 
 use Illuminate\Console\Scheduling\Schedule as IlluminateSchedule;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Schedule

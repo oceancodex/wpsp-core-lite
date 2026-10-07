@@ -1,10 +1,10 @@
 <?php
 
-namespace WPSPCORE\App\Auth;
+namespace WPSPCORELITE\App\Auth;
 
 use Illuminate\Auth\AuthManager as IlluminateAuth;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @method static saveSessionsAndCookies

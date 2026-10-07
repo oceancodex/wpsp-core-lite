@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\App;
+namespace WPSPCORELITE\App\App;
 
 use Illuminate\Foundation\Application as IlluminateApp;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\App

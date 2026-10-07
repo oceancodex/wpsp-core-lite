@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Artisan;
+namespace WPSPCORELITE\App\Artisan;
 
 use Illuminate\Contracts\Console\Kernel as IlluminateArtisan;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Artisan

@@ -6,10 +6,10 @@
  * Time: 8:56 CH
  */
 
-namespace WPSPCORE\App\Console;
+namespace WPSPCORELITE\App\Console;
 
-use WPSPCORE\App\Widen\Application;
-use WPSPCORE\App\Widen\Commands;
+use WPSPCORELITE\App\Widen\Application;
+use WPSPCORELITE\App\Widen\Commands;
 
 if (class_exists('Illuminate\Console\Command')) {
 	abstract class Command extends \Illuminate\Console\Command {}

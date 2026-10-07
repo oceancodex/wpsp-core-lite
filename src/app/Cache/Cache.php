@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Cache;
+namespace WPSPCORELITE\App\Cache;
 
 use Illuminate\Cache\CacheManager as IlluminateCache;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Cache

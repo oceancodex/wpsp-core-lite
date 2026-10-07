@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Widen;
+namespace WPSPCORELITE\App\Widen;
 
 /**
  * Lỗi khi container không thể resolve một abstract.

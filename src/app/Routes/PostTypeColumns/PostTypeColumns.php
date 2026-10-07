@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\PostTypeColumns;
+namespace WPSPCORELITE\App\Routes\PostTypeColumns;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this column(string $column_name, callable|array $callback, array $args = [])

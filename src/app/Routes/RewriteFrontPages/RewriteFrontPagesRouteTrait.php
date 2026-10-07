@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\RewriteFrontPages;
+namespace WPSPCORELITE\App\Routes\RewriteFrontPages;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait RewriteFrontPagesRouteTrait {
 

@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Request;
+namespace WPSPCORELITE\App\Request;
 
 use Illuminate\Http\Request as RequestCore;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Request

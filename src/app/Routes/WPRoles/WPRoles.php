@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\WPRoles;
+namespace WPSPCORELITE\App\Routes\WPRoles;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method $this wp_role(string $role, callable|array $callback, array $args = [])

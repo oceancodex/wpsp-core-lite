@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Routes;
+namespace WPSPCORELITE\App\Routes;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * Hỗ trợ gọi động: prefix(), name(), middleware(), group(),

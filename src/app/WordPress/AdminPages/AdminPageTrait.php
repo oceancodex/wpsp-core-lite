@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\AdminPages;
+namespace WPSPCORELITE\App\WordPress\AdminPages;
 
 trait AdminPageTrait {
 

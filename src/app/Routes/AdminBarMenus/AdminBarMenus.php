@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\AdminBarMenus;
+namespace WPSPCORELITE\App\Routes\AdminBarMenus;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this admin_bar_menu(string $name, callable|array $callback, array $args = [])

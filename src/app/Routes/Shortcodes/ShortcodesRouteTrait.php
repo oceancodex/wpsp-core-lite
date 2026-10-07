@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Shortcodes;
+namespace WPSPCORELITE\App\Routes\Shortcodes;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait ShortcodesRouteTrait {
 

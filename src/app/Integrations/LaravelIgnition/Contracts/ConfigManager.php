@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Integrations\LaravelIgnition\Contracts;
+namespace WPSPCORELITE\App\Integrations\LaravelIgnition\Contracts;
 
 class ConfigManager implements \Spatie\Ignition\Contracts\ConfigManager {
 

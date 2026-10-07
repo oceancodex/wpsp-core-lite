@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Notification;
+namespace WPSPCORELITE\App\Notification;
 
 use Illuminate\Notifications\ChannelManager as IlluminateNotification;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Notification

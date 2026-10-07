@@ -1,13 +1,13 @@
 <?php
 
-namespace WPSPCORE\App\Exceptions;
+namespace WPSPCORELITE\App\Exceptions;
 
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Facade;
-use WPSPCORE\App\Exceptions\Renderer as WPSPRenderer;
-use WPSPCORE\App\Routes\RouteManager;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Exceptions\Renderer as WPSPRenderer;
+use WPSPCORELITE\App\Routes\RouteManager;
+use WPSPCORELITE\BaseInstances;
 
 class Handler extends BaseInstances {
 

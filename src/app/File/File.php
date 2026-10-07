@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\File;
+namespace WPSPCORELITE\App\File;
 
 use Illuminate\Filesystem\Filesystem as IlluminateFile;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 if (class_exists('Illuminate\Support\Facades\File') || class_exists('Illuminate\Filesystem\Filesystem')) {
 	/**

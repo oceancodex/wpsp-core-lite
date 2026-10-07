@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Image;
+namespace WPSPCORELITE\App\Image;
 
 use Illuminate\Image\ImageManager as IlluminateImage;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Image

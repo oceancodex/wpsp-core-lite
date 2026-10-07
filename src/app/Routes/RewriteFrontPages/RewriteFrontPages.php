@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\RewriteFrontPages;
+namespace WPSPCORELITE\App\Routes\RewriteFrontPages;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this get(string $path, callable|array $callback, array $args = [])

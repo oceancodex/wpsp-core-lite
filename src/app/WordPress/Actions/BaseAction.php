@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\MetaBoxes;
+namespace WPSPCORELITE\App\WordPress\MetaBoxes;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseAction extends BaseInstances {
 

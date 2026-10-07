@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\NavigationMenus\Locations;
+namespace WPSPCORELITE\App\WordPress\NavigationMenus\Locations;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseNavigationLocation extends BaseInstances {
 

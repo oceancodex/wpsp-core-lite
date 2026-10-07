@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\View;
+namespace WPSPCORELITE\App\View;
 
 use Illuminate\View\Factory as IlluminateView;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\View

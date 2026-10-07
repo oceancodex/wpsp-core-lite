@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Filters;
+namespace WPSPCORELITE\App\Routes\Filters;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this filter(string $filter, callable|array $callback, array $args = [])

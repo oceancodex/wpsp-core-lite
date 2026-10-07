@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Redis;
+namespace WPSPCORELITE\App\Redis;
 
 use \Illuminate\Redis\RedisManager as IlluminateRedis;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Redis

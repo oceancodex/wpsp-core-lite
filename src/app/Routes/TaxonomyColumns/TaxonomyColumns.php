@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\TaxonomyColumns;
+namespace WPSPCORELITE\App\Routes\TaxonomyColumns;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this column(string $column, callable|array $callback, array $args = [])

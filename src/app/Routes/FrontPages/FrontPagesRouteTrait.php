@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\FrontPages;
+namespace WPSPCORELITE\App\Routes\FrontPages;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait FrontPagesRouteTrait {
 

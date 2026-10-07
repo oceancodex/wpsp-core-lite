@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Gate;
+namespace WPSPCORELITE\App\Gate;
 
 use Illuminate\Contracts\Auth\Access\Gate as IlluminateGate;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Gate

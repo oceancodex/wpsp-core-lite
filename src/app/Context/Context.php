@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Context;
+namespace WPSPCORELITE\App\Context;
 
 use Illuminate\Log\Context\Repository as IlluminateContext;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Context

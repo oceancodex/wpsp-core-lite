@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Response;
+namespace WPSPCORELITE\App\Response;
 
 use \Illuminate\Routing\ResponseFactory;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\Response

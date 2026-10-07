@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\WPRoles;
+namespace WPSPCORELITE\App\WordPress\WPRoles;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 use BadMethodCallException;
 
 /**

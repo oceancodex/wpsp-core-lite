@@ -1,5 +1,5 @@
 <?php
-namespace WPSPCORE\App\Jobs;
+namespace WPSPCORELITE\App\Jobs;
 
 abstract class BaseJob {
 

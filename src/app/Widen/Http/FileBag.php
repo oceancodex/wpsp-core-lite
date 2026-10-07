@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Widen\Http;
+namespace WPSPCORELITE\App\Widen\Http;
 
 /**
  * $request->files: accepts raw $_FILES entries (including nested/multiple)

@@ -1,7 +1,7 @@
 <?php
-namespace WPSPCORE\App\View;
+namespace WPSPCORELITE\App\View;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class Share extends BaseInstances {
 

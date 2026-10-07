@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\MetaBoxes;
+namespace WPSPCORELITE\App\Routes\MetaBoxes;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this meta_box(string $id, callable|array $callback, array $args = [])

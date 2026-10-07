@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Database;
+namespace WPSPCORELITE\App\Database;
 
 use Illuminate\Database\DatabaseManager as IlluminateDB;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\DB

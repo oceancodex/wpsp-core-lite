@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Taxonomies;
+namespace WPSPCORELITE\App\Routes\Taxonomies;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this taxonomy(string $taxonomy, callable|array $callback, array $args = [])

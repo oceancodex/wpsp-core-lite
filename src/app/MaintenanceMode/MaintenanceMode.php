@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\MaintenanceMode;
+namespace WPSPCORELITE\App\MaintenanceMode;
 
 use Illuminate\Foundation\MaintenanceModeManager as IlluminateMaintenanceMode;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \Illuminate\Support\Facades\MaintenanceMode

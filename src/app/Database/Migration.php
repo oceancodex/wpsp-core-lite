@@ -1,11 +1,11 @@
 <?php
 
-namespace WPSPCORE\App\Database;
+namespace WPSPCORELITE\App\Database;
 
 use Illuminate\Contracts\Console\Kernel as ArtisanKernel;
 use Illuminate\Filesystem\Filesystem;
-use WPSPCORE\App\Traits\BaseInstancesTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\BaseInstancesTrait;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * Migration checker tương thích với Application nội bộ (đa plugin).
