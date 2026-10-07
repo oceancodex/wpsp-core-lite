@@ -107,9 +107,12 @@ class Application extends Container {
 	}
 
 	/**
-	 * Thư mục chứa command hoặc tên class / object command.
+	 * Đăng ký command: thư mục, tên class hoặc object command.
+	 * Gọi không tham số => nạp app/Console/Commands (giống Laravel).
 	 */
-	public function withCommands(array $commands) {
+	public function withCommands(array $commands = []) {
+		$commands = $commands ?: [$this->path('Console/Commands')];
+
 		if ($this->resolved('commands')) {
 			$this->make('commands')->register($commands);
 		}
@@ -143,13 +146,38 @@ class Application extends Container {
 		$this->singleton('commands', function($app) {
 			return new Commands($app);
 		});
+
+		$this->registerRequestSubclassResolving();
+	}
+
+	/**
+	 * Type-hint class con của Request (vd: Facades\Request, FormRequest) => container
+	 * sẽ build object rỗng. Callback này đổ dữ liệu của request hiện tại vào object đó
+	 * (query, post, server, headers, files, session, route/user resolver...), giống
+	 * cách Laravel xử lý FormRequest.
+	 */
+	protected function registerRequestSubclassResolving() {
+		$this->resolving(function($object, $app) {
+			$isRequest = $object instanceof Request
+				|| (class_exists('Illuminate\Http\Request', false) && $object instanceof \Illuminate\Http\Request);
+
+			if (!$isRequest) {
+				return;
+			}
+
+			$current = $app->make('request');
+
+			if ($object !== $current) {
+				get_class($object)::createFrom($current, $object);
+			}
+		});
 	}
 
 	protected function registerCoreContainerAliases() {
 		$aliases = [
 			'app'      => array_unique([self::class, static::class, Container::class]),
 			'request'  => [Request::class, 'Illuminate\Http\Request', 'Symfony\Component\HttpFoundation\Request'],
-//			'commands' => [Commands::class],
+			'commands' => [Commands::class],
 		];
 
 		foreach ($aliases as $key => $list) {
