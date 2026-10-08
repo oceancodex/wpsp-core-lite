@@ -2,8 +2,11 @@
 
 namespace WPSPCORELITE\App\Routes;
 
+use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Facade;
 use Symfony\Component\HttpFoundation\Response;
 
 trait RouteTrait {

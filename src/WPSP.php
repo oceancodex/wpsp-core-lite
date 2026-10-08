@@ -2,30 +2,11 @@
 
 namespace WPSPCORELITE;
 
-use Illuminate\Auth\AuthManager;
-use Illuminate\Container\Container;
-use Illuminate\Cookie\CookieValuePrefix;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Encryption\Encrypter;
-use Illuminate\Filesystem\Filesystem;
-use Illuminate\Filesystem\FilesystemManager;
-use Illuminate\Foundation\Application as IlluminateApplication;
-use Illuminate\Foundation\Bootstrap\LoadConfiguration;
-use Illuminate\Foundation\Bootstrap\LoadEnvironmentVariables;
-use Illuminate\Foundation\Bootstrap\RegisterFacades;
-use Illuminate\Foundation\Bootstrap\RegisterProviders;
-use Illuminate\Foundation\Configuration\Exceptions;
-use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Foundation\Exceptions\Renderer\Listener as ExceptionRendererListener;
-use Illuminate\Process\Factory as ProcessFactory;
-use Illuminate\Support\Timebox;
-use WPSPCORELITE\App\Http\Middleware\WPSPStartSession;
-use WPSPCORELITE\App\View\Directives\adminpagemetaboxes;
 use WPSPCORELITE\App\Application as WPSPLiteApplication;
 
 abstract class WPSP extends BaseInstances {
 
-	/** @var null|WPSPLiteApplication|Container */
+	/** @var null|WPSPLiteApplication */
 	public $application = null;
 	public $response    = null;
 
@@ -73,24 +54,8 @@ abstract class WPSP extends BaseInstances {
 	}
 
 	public function buildApplication($basePath): void {
-//		if (class_exists('Illuminate\Foundation\Application')) {
-//			$this->application = IlluminateApplication::configure($basePath)
-//				->withRouting(
-//					web     : $this->funcs->_getRoutesPath('/original/web.php'),
-//					api     : $this->funcs->_getRoutesPath('/original/api.php'),
-//					commands: $this->funcs->_getRoutesPath('/original/console.php'),
-//					health  : '/up',
-//				)
-//				->withMiddleware(function(Middleware $middleware) {})
-//				->withExceptions(function(Exceptions $exceptions) {})
-//				->withProviders($this->getConfig('providers'))
-//				->withCommands($this->getCustomCommands())
-//				->create();
-//		}
-//		else {
-			$this->application = WPSPLiteApplication::configure($basePath)
-				->withCommands($this->getCustomCommands());
-//		}
+		$this->application = WPSPLiteApplication::configure($basePath)
+			->withCommands($this->getCustomCommands());
 	}
 
 	/*
@@ -133,7 +98,6 @@ abstract class WPSP extends BaseInstances {
 	 */
 
 	public function setPaths() {
-//		$this->application->useEnvironmentPath($this->mainPath);
 		$this->application->useAppPath($this->mainPath . '/app');
 		$this->application->useLangPath($this->mainPath . '/lang');
 		$this->application->useConfigPath($this->mainPath . '/config');
@@ -147,30 +111,14 @@ abstract class WPSP extends BaseInstances {
 	 * Bootstrap / Bindings
 	 */
 
-	public function bootstrap() {
-		if (class_exists('Illuminate\Foundation\Application')) {
-			(new LoadEnvironmentVariables)->bootstrap($this->application);
-			(new LoadConfiguration)->bootstrap($this->application);
-			(new RegisterFacades)->bootstrap($this->application);
-			(new RegisterProviders)->bootstrap($this->application);
-		}
-	}
+	public function bootstrap() {}
 
-	// Alias giữ lại để không phá vỡ code cũ gọi bootstrapConsole().
 	public function bootstrapConsole() {
 		$this->bootstrap();
 	}
 
-	/**
-	 * Bindings dùng chung cho cả web & console.
-	 */
 	private function bindingsBase(): void {
 		$this->application->instance('request', $this->request);
-//		$this->application->singleton('files', fn() => new Filesystem());
-//		$this->application->singleton('process', fn($app) => $app->make(ProcessFactory::class));
-//		$this->application->singleton('filesystem', fn($app) => new FilesystemManager($app));
-//		$this->application->alias('filesystem', 'storage');
-//		$this->application->alias('filesystem', FilesystemManager::class);
 		$this->application->instance('funcs', $this->funcs ??= new Funcs(
 			$this->mainPath,
 			$this->rootNamespace,
@@ -179,27 +127,15 @@ abstract class WPSP extends BaseInstances {
 		));
 	}
 
-	/**
-	 * instance - khởi tạo ngay khi bootstrap.
-	 * singleton - chỉ khởi tạo khi cần.
-	 */
 	public function bindings() {
 		$this->bindingsBase();
-
-		// Exception Renderer Listener — bắt query/log/dump cho trang lỗi.
-		// Bind singleton TRƯỚC khi make để renderer và listener share cùng instance.
-//		$this->application->singleton(ExceptionRendererListener::class);
-//		$this->application->make(ExceptionRendererListener::class)->registerListeners($this->application->make('events'));
 	}
 
-	// Alias giữ lại tương thích ngược.
 	public function bindingsConsole() {
 		$this->bindingsBase();
 	}
 
-	public function extends() {
-		$this->overrideRememberCookieName();
-	}
+	public function extends() {}
 
 	public function extendsConsole() {}
 
@@ -218,115 +154,20 @@ abstract class WPSP extends BaseInstances {
 	public function afterBindingsConsole() {}
 
 	/*
-	 * Blade directives
-	 */
-
-	public function registerBladeDirectives() {
-		$bladeCompiler = $this->application->make('blade.compiler');
-
-		$directiveClasses = [
-			adminpagemetaboxes::class,
-		];
-
-		foreach ($directiveClasses as $directiveClass) {
-			(new $directiveClass(
-				$this->mainPath,
-				$this->rootNamespace,
-				$this->prefixEnv,
-				array_merge($this->extraParams, ['funcs' => $this->funcs])
-			))->register($bladeCompiler);
-		}
-	}
-
-	/*
 	 * Request lifecycle
 	 */
 
 	public function handleRequest() {
 		$this->beforeHandleRequest();
 
-//		$this->handleRequestStartTime = microtime(true);
-
-//		$this->startSession();
-
-		// 1: Đẩy Cookie sớm về Client.
-//		$this->sendSessionCookiesToClient();
-
-		// 2: Bật Output Buffering để đánh chặn TẤT CẢ các lệnh die/exit (bao gồm cả wp_send_json)
-//		ob_start(function($buffer) {
-//			// Hàm này tự động chạy NGAY TRƯỚC KHI PHP kết thúc request (kể cả khi gọi die/exit)
-//			$this->saveSession();
-//			return $buffer;
-//		});
-
-		// 3: Dự phòng cho request thông thường kết thúc qua hook shutdown của WP.
-//		if (function_exists('add_action')) {
-//			add_action('shutdown', [$this, 'saveSession'], 1);
-//		} else {
-//			register_shutdown_function([$this, 'saveSession']);
-//		}
-
 		$this->applyMiddlewares();
 
 		$this->beforeResponse();
-
-//		$this->shareErrorsToViews();
-
-//		$this->application->instance('after_handle_request_time', microtime(true));
-//		$this->application->instance('start_handle_request_time', $this->handleRequestStartTime);
 
 		$this->afterHandleRequest();
 	}
 
 	public function beforeHandleRequest() {}
-
-	public function startSession() {
-		if ($this->funcs->_isWPInternalRequest()) {
-			return;
-		}
-
-		// Start session middleware.
-		$middleware = $this->application->make(WPSPStartSession::class);
-		$middleware->handle($this->request, fn($request) => $request, ['funcs' => $this->funcs]);
-
-		// Save flash data.
-		if ($this->application->bound('session.store')) {
-			/** @var \Illuminate\Session\Store $session */
-			$session = $this->application['session.store'];
-
-			if ($session->isStarted()) {
-				// Gắn object Session Store vào Request hiện tại ngay lập tức
-				$this->request->setLaravelSession($session);
-			}
-		}
-	}
-
-	public function sendSessionCookiesToClient() {
-		$session = $this->resolveStartedSession();
-		if (!$session) {
-			return;
-		}
-
-		$this->emitCookies($this->buildSessionCookies($session));
-	}
-
-	public function saveSession() {
-		$session = $this->resolveStartedSession();
-		if (!$session) {
-			return;
-		}
-
-		// 1. Đồng bộ lại Session từ Request (đề phòng trường hợp Session ID đã bị thay đổi bởi Auth::logout hoặc Auth::login)
-		if ($this->request->hasSession()) {
-			$session = $this->request->session();
-		}
-
-		// 2. Persist dữ liệu session xuống database
-		$session->save();
-
-		// 3. Ghi Cookie mới nhất (bao gồm cả Session ID mới sau khi logout/login) ra client
-		$this->emitCookies($this->buildSessionCookies($session));
-	}
 
 	public function applyMiddlewares() {
 		foreach ($this->middlewares as $middleware) {
@@ -337,159 +178,6 @@ abstract class WPSP extends BaseInstances {
 
 	public function beforeResponse() {}
 
-	public function shareErrorsToViews() {
-		if ($this->application->bound('view') && $this->application->bound('session.store')) {
-			$errors = $this->application['session.store']->get('errors', new \Illuminate\Support\ViewErrorBag());
-			$this->application['view']->share('errors', $errors);
-		}
-	}
-
 	public function afterHandleRequest() {}
-
-	/*
-	 * Session cookie helpers
-	 */
-
-	/**
-	 * Trả về session store nếu đã thực sự start, ngược lại null.
-	 */
-	private function resolveStartedSession(): ?\Illuminate\Session\Store {
-		if ($this->funcs->_isWPInternalRequest() || !$this->application->bound('session.store')) {
-			return null;
-		}
-
-		/** @var \Illuminate\Session\Store $session */
-		$session = $this->application['session.store'];
-
-		return $session->isStarted() ? $session : null;
-	}
-
-	/**
-	 * Dựng cả Auth cookie (đã mã hóa), XSRF cookie, và tự động vét các cookie hàng đợi từ CookieJar.
-	 */
-	private function buildSessionCookies(\Illuminate\Session\Store $session): array {
-		$sessionConfig = $this->application['session']->getSessionConfig();
-		$configSession = $this->funcs->_config('session');
-
-		$cookies = [];
-
-		if (($sessionConfig['driver'] ?? '') !== 'array') {
-			$lifetime = $sessionConfig['lifetime'];
-			$path     = $configSession['path'];
-			$domain   = $configSession['domain'];
-			$secure   = $configSession['secure'] ?? true;
-			$sameSite = $sessionConfig['same_site'] ?? 'Lax';
-
-			/** @var Encrypter $encrypter */
-			$encrypter = $this->application->make(Encrypter::class);
-
-			// ==========================================
-			// Mã hóa Auth Session Cookie
-			// ==========================================
-			$sessionName = $session->getName();
-
-			// Thêm tiền tố định danh Cookie nhằm tránh việc tráo đổi giá trị giữa các cookie khác nhau
-			$sessionPrefix = CookieValuePrefix::create($sessionName, $encrypter->getKey());
-
-			// Tiến hành mã hóa (không dùng serialize)
-			$encryptedSessionId = $encrypter->encrypt(
-				$sessionPrefix . $session->getId(),
-				false
-			);
-
-			$cookies[] = (string)cookie(
-				$sessionName,
-				$encryptedSessionId, // Gửi chuỗi đã mã hóa.
-				$lifetime, $path, $domain, $secure, true, false, $sameSite
-			);
-
-			// 2. XSRF cookie (httpOnly = false để JS đọc được).
-			$xsrfName   = $sessionName . '-XSRF-TOKEN';
-			$xsrfPrefix = CookieValuePrefix::create($xsrfName, $encrypter->getKey());
-			$xsrfToken  = $encrypter->encrypt(
-				$xsrfPrefix . $session->token(),
-				EncryptCookies::serialized('XSRF-TOKEN')
-			);
-
-			$cookies[] = (string)cookie(
-				$xsrfName,
-				$xsrfToken,
-				$lifetime, $path, $domain, $secure, false, false, $sameSite
-			);
-		}
-
-		// 3. Tự động kiểm tra và quét qua CookieJar để lôi các cookie khác trong hàng đợi ra (ví dụ: Remember Me)
-		if ($this->application->bound('cookie')) {
-			/** @var \Illuminate\Cookie\CookieJar $cookieJar */
-			$cookieJar = $this->application['cookie'];
-
-			foreach ($cookieJar->getQueuedCookies() as $queuedCookie) {
-				// Đổi timestamp hết hạn sang số phút (hàm cookie() nhận tham số $minutes)
-				$minutes = $queuedCookie->getExpiresTime() ? ($queuedCookie->getExpiresTime() - time()) / 60 : 0;
-
-				$cookies[] = (string)cookie(
-					$queuedCookie->getName(),
-					$queuedCookie->getValue(),
-					$minutes,
-					$path,
-					$domain,
-					$secure,
-					$queuedCookie->isHttpOnly(),
-					$queuedCookie->isRaw(),
-					$sameSite
-				);
-			}
-
-			// Dọn dẹp sạch hàng đợi sau khi đã lấy, tránh đẩy trùng lặp ở các hook kề sau.
-			$cookieJar->flushQueuedCookies();
-		}
-
-		return $cookies;
-	}
-
-	/**
-	 * Ghi các cookie header ra client, chỉ khi headers chưa gửi.
-	 *
-	 * @param string[] $cookies
-	 */
-	private function emitCookies(array $cookies): void {
-		if (headers_sent()) {
-			return;
-		}
-		foreach ($cookies as $cookie) {
-			@header('Set-Cookie: ' . $cookie, false);
-		}
-	}
-
-	/*
-	 * Auth
-	 */
-
-	/**
-	 * Override SessionGuard để đổi remember_web_* → wpsp_remember_web_*.
-	 */
-	private function overrideRememberCookieName() {
-		$this->application->afterResolving('auth', function(AuthManager $auth) {
-			$auth->extend('session', function($app, $name, $config) use ($auth) {
-				$provider = $auth->createUserProvider($config['provider']);
-
-				$guard = new \WPSPCORELITE\App\Auth\SessionGuard(
-					$name,
-					$provider,
-					$app['session.store'],
-					$app['request'],
-					$app->make(Timebox::class),
-					true,
-					200000,
-					$app['funcs']
-				);
-
-				$guard->setCookieJar($app['cookie']);
-				$guard->setRequest($app['request']);
-
-				return $guard;
-			});
-		});
-	}
 
 }

@@ -2,10 +2,9 @@
 
 namespace WPSPCORELITE\App\File;
 
-use Illuminate\Filesystem\Filesystem as IlluminateFile;
 use WPSPCORELITE\BaseInstances;
 
-class File {
+class File extends BaseInstances {
 
 	public static function exists($path) {
 		return file_exists($path);

@@ -1,5 +1,5 @@
 <?php
 
 return [
-	\WPSPCORELITE\App\Providers\AppServiceProvider::class,
+	\WPSPCORE\App\Providers\AppServiceProvider::class,
 ];

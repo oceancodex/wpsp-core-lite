@@ -23,9 +23,6 @@ use WPSPCORELITE\App\Http\Request as WPSPCORE_Http_Request;
  */
 class Application extends Container {
 
-	public $name    = 'WPSP Framework';
-	public $version = 'Lite';
-
 	protected $basePath;
 
 	/** name => đường dẫn tuyệt đối do useXPath() đặt; mặc định tính theo basePath. */
@@ -185,10 +182,6 @@ class Application extends Container {
 				$this->alias($key, $alias);
 			}
 		}
-	}
-
-	public function version() {
-		return $this->version;
 	}
 
 	/*

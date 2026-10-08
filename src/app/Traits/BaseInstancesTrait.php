@@ -2,7 +2,6 @@
 
 namespace WPSPCORELITE\App\Traits;
 
-use Illuminate\Http\Request as IlluminateRequest;
 use WPSPCORELITE\App\Routes\RouteTrait;
 use WPSPCORELITE\App\Http\Request as WPSPCORE_Request;
 

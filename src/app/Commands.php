@@ -250,11 +250,6 @@ class Commands {
 			}
 		}
 
-		if (in_array('-V', $tokens, true) || in_array('--version', $tokens, true)) {
-			echo $this->app->name . ' ' . $this->color($this->app->version(), 'green') . PHP_EOL;
-			return 0;
-		}
-
 		try {
 			if ($name === null || $name === 'list') {
 				$this->renderList($name === 'list' ? ($tokens[0] ?? null) : null);
@@ -323,15 +318,12 @@ class Commands {
 	}
 
 	public function renderList($namespace = null) {
-		echo $this->app->name . ' ' . $this->color($this->app->version(), 'green') . PHP_EOL . PHP_EOL;
-
 		echo $this->color('Usage:', 'yellow') . PHP_EOL;
 		echo '  command [options] [arguments]' . PHP_EOL . PHP_EOL;
 
 		echo $this->color('Options:', 'yellow') . PHP_EOL;
 		$globals = [
 			'-h, --help'           => 'Display help for the given command',
-			'-V, --version'        => 'Display this application version',
 			'    --ansi|--no-ansi' => 'Force (or disable) ANSI output',
 			'-n, --no-interaction' => 'Do not ask any interactive question',
 		];
