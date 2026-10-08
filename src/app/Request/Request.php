@@ -174,11 +174,6 @@ class Request extends Facade {
 		return 'request';
 	}
 
-	/**
-	 * Object request thật (Laravel: Request::instance()).
-	 *
-	 * @return \WPSPCORELITE\App\Http\Request
-	 */
 	public static function instance() {
 		return static::getFacadeRoot();
 	}

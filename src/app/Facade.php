@@ -2,6 +2,8 @@
 
 namespace WPSPCORELITE\App;
 
+use WPSPCORELITE\BaseInstances;
+
 /**
  * Facade - mô phỏng Illuminate\Support\Facades\Facade bằng PHP thuần.
  *
@@ -13,7 +15,7 @@ namespace WPSPCORELITE\App;
  *   Object đã resolve vẫn được container giữ, nên chi phí chỉ là 1 lần tra mảng.
  * - Có __call: lỡ type-hint class facade thì $facade->input() vẫn chạy.
  */
-abstract class Facade {
+abstract class Facade extends BaseInstances {
 
 	/** @var \WPSPCORELITE\App\Container|\ArrayAccess|null */
 	protected static $app;

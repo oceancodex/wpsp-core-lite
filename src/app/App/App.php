@@ -1,20 +1,15 @@
 <?php
 
-namespace WPSPCORELITE\App\Request;
+namespace WPSPCORELITE\App\App;
 
 use WPSPCORELITE\App\Facade;
 
-class Request extends Facade {
+class App extends Facade {
 
 	protected static function getFacadeAccessor() {
 		return 'app';
 	}
 
-	/**
-	 * Object request thật (Laravel: Request::instance()).
-	 *
-	 * @return \WPSPCORELITE\App\Http\Request
-	 */
 	public static function instance() {
 		return static::getFacadeRoot();
 	}
