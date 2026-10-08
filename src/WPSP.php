@@ -24,11 +24,8 @@ abstract class WPSP extends BaseInstances {
 
 		$this->setPaths();
 		$this->afterSetPaths();
-//		$this->bootstrap();
-//		$this->afterBoostrap();
 		$this->bindings();
 		$this->afterBindings();
-//		$this->extends();
 
 		$this->application->boot();
 
@@ -42,11 +39,8 @@ abstract class WPSP extends BaseInstances {
 
 		$this->setPaths();
 		$this->afterSetPaths();
-//		$this->bootstrapConsole();
-//		$this->afterBoostrapConsole();
 		$this->bindingsConsole(); // Console không cần Listener của exception renderer
 		$this->afterBindingsConsole();
-//		$this->extendsConsole();
 
 		$this->application->boot();
 
@@ -111,12 +105,6 @@ abstract class WPSP extends BaseInstances {
 	 * Bootstrap / Bindings
 	 */
 
-	public function bootstrap() {}
-
-	public function bootstrapConsole() {
-		$this->bootstrap();
-	}
-
 	private function bindingsBase(): void {
 		$this->application->instance('request', $this->request);
 		$this->application->instance('funcs', $this->funcs ??= new Funcs(
@@ -134,10 +122,6 @@ abstract class WPSP extends BaseInstances {
 	public function bindingsConsole() {
 		$this->bindingsBase();
 	}
-
-	public function extends() {}
-
-	public function extendsConsole() {}
 
 	/*
 	 * Hooks
@@ -159,11 +143,8 @@ abstract class WPSP extends BaseInstances {
 
 	public function handleRequest() {
 		$this->beforeHandleRequest();
-
 		$this->applyMiddlewares();
-
 		$this->beforeResponse();
-
 		$this->afterHandleRequest();
 	}
 
