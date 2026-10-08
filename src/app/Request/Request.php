@@ -2,7 +2,8 @@
 
 namespace WPSPCORELITE\App\Request;
 
-use WPSPCORELITE\App\Facade;
+use WPSPCORELITE\App\Http\Request as RequestCore;;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * Facade cho 'request' - mô phỏng Illuminate\Support\Facades\Request.
@@ -13,8 +14,8 @@ use WPSPCORELITE\App\Facade;
  * Không dùng class này làm type-hint cho DI; hãy type-hint
  * \WPSPCORELITE\App\Widen\Http\Request (giống Laravel: type-hint Illuminate\Http\Request).
  *
- * @method static Http\Request resetCache()
- * @method static Http\Request duplicate(?array $query = null, ?array $request = null, ?array $attributes = null, ?array $cookies = null, ?array $files = null, ?array $server = null)
+ * @method static \WPSPCORELITE\App\Http\Request resetCache()
+ * @method static \WPSPCORELITE\App\Http\Request duplicate(?array $query = null, ?array $request = null, ?array $attributes = null, ?array $cookies = null, ?array $files = null, ?array $server = null)
  * @method static string getRealMethod()
  * @method static string getMethod()
  * @method static string method()
@@ -23,7 +24,7 @@ use WPSPCORELITE\App\Facade;
  * @method static bool isMethodSafe()
  * @method static bool isMethodIdempotent()
  * @method static bool isMethodCacheable()
- * @method static Http\Request setBaseUrl(string $baseUrl)
+ * @method static \WPSPCORELITE\App\Http\Request setBaseUrl(string $baseUrl)
  * @method static string getBaseUrl()
  * @method static string getBasePath()
  * @method static string getScriptName()
@@ -104,7 +105,7 @@ use WPSPCORELITE\App\Facade;
  * @method static void setDefaultRequestLocale(string $locale)
  * @method static string getContent()
  * @method static mixed json(?string $key = null, $default = null)
- * @method static Http\Request setJson(WPSPCORELITE\App\Widen\Http\ParameterBag $json)
+ * @method static \WPSPCORELITE\App\Http\Request setJson(\WPSPCORELITE\App\Http\ParameterBag $json)
  * @method static mixed server(?string $key = null, $default = null)
  * @method static array all($keys = null)
  * @method static mixed input(?string $key = null, $default = null)
@@ -132,11 +133,11 @@ use WPSPCORELITE\App\Facade;
  * @method static mixed collect($key = null)
  * @method static array only(...$keys)
  * @method static array except(...$keys)
- * @method static Http\Request merge(array $input)
- * @method static Http\Request mergeIfMissing(array $input)
- * @method static Http\Request replace(array $input)
+ * @method static \WPSPCORELITE\App\Http\Request merge(array $input)
+ * @method static \WPSPCORELITE\App\Http\Request mergeIfMissing(array $input)
+ * @method static \WPSPCORELITE\App\Http\Request replace(array $input)
  * @method static mixed get(string $key, mixed $default = null)
- * @method static Http\Request dump(...$keys)
+ * @method static \WPSPCORELITE\App\Http\Request dump(...$keys)
  * @method static mixed dd(...$keys)
  * @method static bool hasCookie(string $key)
  * @method static mixed cookie(?string $key = null, $default = null)
@@ -157,10 +158,10 @@ use WPSPCORELITE\App\Facade;
  * @method static bool isPrecognitive()
  * @method static mixed user($guard = null)
  * @method static \Closure getUserResolver()
- * @method static Http\Request setUserResolver(\Closure $callback)
+ * @method static \WPSPCORELITE\App\Http\Request setUserResolver(\Closure $callback)
  * @method static mixed route(?string $param = null, $default = null)
  * @method static \Closure getRouteResolver()
- * @method static Http\Request setRouteResolver(\Closure $callback)
+ * @method static \WPSPCORELITE\App\Http\Request setRouteResolver(\Closure $callback)
  * @method static string fingerprint()
  * @method static mixed when($value = null, ?callable $callback = null, ?callable $default = null)
  * @method static mixed unless($value = null, ?callable $callback = null, ?callable $default = null)
@@ -168,14 +169,39 @@ use WPSPCORELITE\App\Facade;
  *
  * @see \WPSPCORELITE\App\Http\Request
  */
-class Request extends Facade {
+abstract class Request extends BaseInstances {
 
-	protected static function getFacadeAccessor() {
-		return 'request';
+	private ?RequestCore $facade;
+
+	/*
+	 *
+	 */
+
+	public function getFacade(): ?RequestCore {
+		return $this->facade;
 	}
 
-	public static function instance() {
-		return static::getFacadeRoot();
+	public function setFacade() {
+		$this->facade = $this->funcs->_getApplication('request');
+	}
+
+	/*
+	 *
+	 */
+
+	public function __call($method, $arguments) {
+		return static::__callStatic($method, $arguments);
+	}
+
+	public static function __callStatic($method, $arguments) {
+		$instance = static::wpspInstance();
+
+		$underlineMethod = '_' . $method;
+		if (method_exists($instance, $underlineMethod)) {
+			return $instance->$underlineMethod(...$arguments);
+		}
+
+		return $instance->getFacade()?->$method(...$arguments);
 	}
 
 }
