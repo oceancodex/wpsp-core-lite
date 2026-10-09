@@ -457,7 +457,7 @@ class Commands {
 		}
 		$this->writeError('  ' . $this->color(str_repeat(' ', $width), 'error') . PHP_EOL . PHP_EOL);
 
-		if (!($e instanceof \InvalidArgumentException) || getenv('XCONSOLE_DEBUG') || $this->app->hasDebugModeEnabled()) {
+		if (!($e instanceof \InvalidArgumentException) || $this->app->hasDebugModeEnabled()) {
 			$this->writeError($this->color('  at ' . $e->getFile() . ':' . $e->getLine(), 'gray') . PHP_EOL . PHP_EOL);
 		}
 	}

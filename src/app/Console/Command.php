@@ -401,7 +401,7 @@ abstract class Command {
 	 */
 
 	protected function interactive() {
-		return !$this->option('no-interaction') && (!function_exists('stream_isatty') || @stream_isatty(STDIN) || getenv('XCONSOLE_FORCE_INTERACTIVE'));
+		return !$this->option('no-interaction') && (!function_exists('stream_isatty') || @stream_isatty(STDIN));
 	}
 
 	protected function readLine($prompt) {
