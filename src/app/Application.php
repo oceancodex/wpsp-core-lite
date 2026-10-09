@@ -8,14 +8,15 @@
 
 namespace WPSPCORELITE\App;
 
-use WPSPCORELITE\App\Http\Request as WPSPCORE_Http_Request;
+use WPSPCORELITE\App\Filesystem\Filesystem;
+use WPSPCORELITE\App\Http\Request;
 use WPSPCORELITE\App\Support\Facades\Facade;
 
 /**
  * Application - mô phỏng Illuminate\Foundation\Application bằng PHP thuần.
  *
  * - Container đầy đủ (kế thừa Container).
- * - Bindings sẵn có: 'app', 'request', 'commands', 'path.*'.
+ * - Bindings sẵn có: 'app', 'request', 'files', 'commands', 'path.*'.
  * - Paths, environment, locale, service providers (kể cả deferred), boot/terminate.
  * - Cấu hình fluent: Application::configure($basePath)->withProviders([...])->withSingletons([...])->create().
  *
@@ -142,6 +143,10 @@ class Application extends Container {
 			return Request::capture();
 		});
 
+		$this->singleton('files', function() {
+			return new Filesystem();
+		});
+
 		$this->singleton('commands', function($app) {
 			return new Commands($app);
 		});
@@ -175,6 +180,7 @@ class Application extends Container {
 		$aliases = [
 			'app'      => array_unique([self::class, static::class, Container::class]),
 			'request'  => [WPSPCORE_Http_Request::class],
+			'files'    => [Filesystem::class],
 			'commands' => [Commands::class],
 		];
 

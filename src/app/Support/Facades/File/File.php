@@ -2,17 +2,17 @@
 
 namespace WPSPCORELITE\App\Support\Facades\File;
 
-use WPSPCORELITE\App\Filesystem\Filesystem;
-use WPSPCORELITE\App\Filesystem\SplFileInfo;
+use WPSPCORELITE\App\Filesystem\Filesystem as FilesystemCore;
+use WPSPCORELITE\BaseInstances;
 
 /**
- * Static proxy ("facade") for Filesystem — same role as Illuminate\Support\Facades\File.
+ * Facade cho 'files' - mô phỏng Illuminate\Support\Facades\File.
  *
- * Usage:
- *   File::exists($path);
- *   File::put($path, 'content', true);
- *   File::allFiles($dir);
- *   File::swap(new FakeFilesystem());   // for testing
+ * Gọi static:  File::exists($path), File::get($path), File::put($path, $content), File::allFiles($dir)
+ * Lấy object:  File::instance() hoặc $this->funcs->_getApplication('files')
+ *
+ * Không dùng class này làm type-hint cho DI; hãy type-hint
+ * \WPSPCORELITE\App\Filesystem\Filesystem (giống Laravel: type-hint Illuminate\Filesystem\Filesystem).
  *
  * @method static bool exists(string $path)
  * @method static bool missing(string $path)
@@ -50,10 +50,10 @@ use WPSPCORELITE\App\Filesystem\SplFileInfo;
  * @method static bool hasSameHash(string $firstFile, string $secondFile)
  * @method static bool isFile(string $file)
  * @method static array glob(string $pattern, int $flags = 0)
- * @method static SplFileInfo[] files(string $directory, bool $hidden = false)
- * @method static SplFileInfo[] allFiles(string $directory, bool $hidden = false)
+ * @method static \WPSPCORELITE\App\Filesystem\SplFileInfo[] files(string $directory, bool $hidden = false)
+ * @method static \WPSPCORELITE\App\Filesystem\SplFileInfo[] allFiles(string $directory, bool $hidden = false)
  * @method static string[] directories(string $directory)
- * @method static SplFileInfo[] allDirectories(string $directory)
+ * @method static \WPSPCORELITE\App\Filesystem\SplFileInfo[] allDirectories(string $directory)
  * @method static void ensureDirectoryExists(string $path, int $mode = 0755, bool $recursive = true)
  * @method static bool makeDirectory(string $path, int $mode = 0755, bool $recursive = false, bool $force = false)
  * @method static bool moveDirectory(string $from, string $to, bool $overwrite = false)
@@ -61,40 +61,48 @@ use WPSPCORELITE\App\Filesystem\SplFileInfo;
  * @method static bool deleteDirectory(string $directory, bool $preserve = false)
  * @method static bool deleteDirectories(string $directory)
  * @method static bool cleanDirectory(string $directory)
+ * @method static mixed when($value = null, ?callable $callback = null, ?callable $default = null)
+ * @method static mixed unless($value = null, ?callable $callback = null, ?callable $default = null)
  * @method static void macro(string $name, object|callable $macro)
+ * @method static void mixin(object $mixin, bool $replace = true)
  * @method static bool hasMacro(string $name)
+ * @method static void flushMacros()
  *
- * @see Filesystem
+ * @see \WPSPCORELITE\App\Filesystem\Filesystem
  */
-class File {
+abstract class File extends BaseInstances {
 
-	/** @var Filesystem|null */
-	protected static $instance;
+	private ?FilesystemCore $facade = null;
 
-	public static function instance() {
-		if (!static::$instance) {
-			static::$instance = new Filesystem();
-		}
+	/*
+	 *
+	 */
 
-		return static::$instance;
+	public function getFacade(): ?FilesystemCore {
+		return $this->facade;
 	}
 
-	/**
-	 * Replace the underlying instance (e.g. a mock in tests).
+	public function setFacade() {
+		$this->facade = $this->funcs->_getApplication('files');
+	}
+
+	/*
+	 *
 	 */
-	public static function swap(Filesystem $filesystem) {
-		static::$instance = $filesystem;
+
+	public function __call($method, $arguments) {
+		return static::__callStatic($method, $arguments);
 	}
 
 	public static function __callStatic($method, $arguments) {
-		$instance = static::instance();
+		$instance = static::wpspInstance();
 
-		// Macro registration methods are static on Filesystem.
-		if (in_array($method, ['macro', 'mixin', 'hasMacro', 'flushMacros'], true)) {
-			return Filesystem::$method(...$arguments);
+		$underlineMethod = '_' . $method;
+		if (method_exists($instance, $underlineMethod)) {
+			return $instance->$underlineMethod(...$arguments);
 		}
 
-		return $instance->$method(...$arguments);
+		return $instance->getFacade()?->$method(...$arguments);
 	}
 
 }
