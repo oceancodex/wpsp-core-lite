@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORELITE\App\Artisan;
+namespace WPSPCORELITE\App\Support\Facades\Artisan;
 
 use WPSPCORELITE\App\Commands;
 use WPSPCORELITE\BaseInstances;

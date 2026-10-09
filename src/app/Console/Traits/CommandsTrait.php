@@ -10,7 +10,7 @@ use WPSPCORELITE\Funcs;
  */
 trait CommandsTrait {
 
-	public $coreNamespace = 'WPSPCORE';
+	public $coreNamespace = 'WPSPCORELITE';
 	public $funcs         = null;
 
 	/*

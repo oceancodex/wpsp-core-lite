@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORELITE\App\App;
+namespace WPSPCORELITE\App\Support\Facades\App;
 
 use WPSPCORELITE\App\Application;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @mixin \WPSPCORELITE\App\Application

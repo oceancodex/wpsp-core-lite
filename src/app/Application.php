@@ -9,6 +9,7 @@
 namespace WPSPCORELITE\App;
 
 use WPSPCORELITE\App\Http\Request as WPSPCORE_Http_Request;
+use WPSPCORELITE\App\Support\Facades\Facade;
 
 /**
  * Application - mô phỏng Illuminate\Foundation\Application bằng PHP thuần.

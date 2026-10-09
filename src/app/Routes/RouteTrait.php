@@ -1166,7 +1166,7 @@ trait RouteTrait {
 	 * (nếu Lite Facade có các method tương ứng).
 	 */
 	protected function syncContainerState($container): void {
-		$facade = \WPSPCORELITE\App\Facade::class;
+		$facade = \WPSPCORELITE\App\Support\Facades\Facade::class;
 
 		if (!class_exists($facade) || !method_exists($facade, 'setFacadeApplication')) {
 			return;

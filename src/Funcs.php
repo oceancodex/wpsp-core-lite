@@ -1116,6 +1116,9 @@ class Funcs extends BaseInstances {
 	public function _trans($string, $replaces = [], $wordpress = false) {
 		try {
 			if ($wordpress || !class_exists('Illuminate\Translation\Translator')) {
+				foreach (($replaces ?? []) as $find => $replace) {
+					$string = str_replace($find, $replace, $string);
+				}
 				return __($string, $this->_getTextDomain());
 			}
 			else {

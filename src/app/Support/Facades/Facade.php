@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORELITE\App;
+namespace WPSPCORELITE\App\Support\Facades;
 
 use WPSPCORELITE\BaseInstances;
 

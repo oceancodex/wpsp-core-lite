@@ -1,9 +1,11 @@
 <?php
 
-namespace WPSPCORELITE\App\Request;
+namespace WPSPCORELITE\App\Support\Facades\Request;
 
-use WPSPCORELITE\App\Http\Request as RequestCore;;
+use WPSPCORELITE\App\Http\Request as RequestCore;
 use WPSPCORELITE\BaseInstances;
+
+;
 
 /**
  * Facade cho 'request' - mô phỏng Illuminate\Support\Facades\Request.
