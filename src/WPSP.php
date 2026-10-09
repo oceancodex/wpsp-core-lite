@@ -39,7 +39,7 @@ abstract class WPSP extends BaseInstances {
 
 		$this->setPaths();
 		$this->afterSetPaths();
-		$this->bindingsConsole(); // Console không cần Listener của exception renderer
+		$this->bindingsConsole();
 		$this->afterBindingsConsole();
 
 		$this->application->boot();

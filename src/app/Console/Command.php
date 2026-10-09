@@ -116,7 +116,7 @@ abstract class Command {
 	 * Gọi command khác: $this->call('make:model', ['name' => 'Post', '--force' => true])
 	 */
 	public function call($command, array $arguments = []) {
-		return $this->application->call($command, $arguments);
+		return $this->application->runCommand($command, $arguments);
 	}
 
 	public function callSilent($command, array $arguments = []) {
@@ -510,7 +510,17 @@ abstract class Command {
 	}
 
 	public function error($text) {
-		fwrite(STDERR, $this->color($text, 'red') . PHP_EOL);
+		$text = $this->color($text, 'red') . PHP_EOL;
+
+		if ($this->application) {
+			$this->application->writeError($text);
+		}
+		elseif (defined('STDERR')) {
+			fwrite(STDERR, $text);
+		}
+		else {
+			echo $text;
+		}
 	}
 
 	public function newLine($count = 1) {

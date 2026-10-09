@@ -3,10 +3,10 @@
 namespace WPSPCORELITE;
 
 use Carbon\Carbon;
+use WPSPCORELITE\App\Http\Request;
 use Illuminate\View\View;
 use NumberFormatter;
 use WPSPCORELITE\App\Routes\RouteRegexParser;
-use WPSPCORELITE\App\Http\Request;
 
 /**
  * @method static mixed getWPSP()
@@ -425,77 +425,61 @@ class Funcs extends BaseInstances {
 
 		$files = [];
 
-		// 1. Sử dụng Symfony Finder nếu class tồn tại
-		if (class_exists('\Symfony\Component\Finder\Finder')) {
-			$finder = new \Symfony\Component\Finder\Finder();
-			$finder->files()->in($path)->name('*.php');
+
+		// Sử dụng Native PHP (SPL)
+		$realPath = realpath($path);
+		if ($realPath === false) {
+			return [];
+		}
+
+		$flags = \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO;
+
+		try {
+			$directoryIterator = new \RecursiveDirectoryIterator($realPath, $flags);
+			$iterator          = new \RecursiveIteratorIterator($directoryIterator, \RecursiveIteratorIterator::SELF_FIRST);
 
 			if ($depth !== null) {
-				$finder->depth($depth);
-			}
-
-			foreach ($finder as $file) {
-				$files[] = [
-					'relativePath' => $file->getRelativePath(),
-					'filename'     => $file->getFilenameWithoutExtension(),
-				];
-			}
-		}
-		else {
-			// 2. Fallback sử dụng Native PHP (SPL)
-			$realPath = realpath($path);
-			if ($realPath === false) {
-				return [];
-			}
-
-			$flags = \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO;
-
-			try {
-				$directoryIterator = new \RecursiveDirectoryIterator($realPath, $flags);
-				$iterator          = new \RecursiveIteratorIterator($directoryIterator, \RecursiveIteratorIterator::SELF_FIRST);
-
-				if ($depth !== null) {
-					$maxDepth = is_numeric($depth) ? (int)$depth : $this->_parseDepthString($depth);
-					if ($maxDepth !== null) {
-						$iterator->setMaxDepth($maxDepth);
-					}
+				$maxDepth = is_numeric($depth) ? (int)$depth : $this->_parseDepthString($depth);
+				if ($maxDepth !== null) {
+					$iterator->setMaxDepth($maxDepth);
 				}
+			}
 
-				foreach ($iterator as $item) {
-					try {
-						// Chỉ lấy file có đuôi .php
-						if ($item->isFile() && $item->getExtension() === 'php') {
-							$itemRealPath = $item->getRealPath();
-							if ($itemRealPath === false) {
-								continue;
-							}
-
-							// Tính relative path của thư mục chứa file
-							$dirRealPath  = dirname($itemRealPath);
-							$relativePath = '';
-
-							if ($dirRealPath !== $realPath) {
-								$relativePath = substr($dirRealPath, strlen($realPath) + 1);
-							}
-
-							$files[] = [
-								'relativePath' => $relativePath,
-								'filename'     => pathinfo($item->getFilename(), PATHINFO_FILENAME),
-							];
+			foreach ($iterator as $item) {
+				try {
+					// Chỉ lấy file có đuôi .php
+					if ($item->isFile() && $item->getExtension() === 'php') {
+						$itemRealPath = $item->getRealPath();
+						if ($itemRealPath === false) {
+							continue;
 						}
-					}
-					catch (\Throwable $e) {
-						continue;
+
+						// Tính relative path của thư mục chứa file
+						$dirRealPath  = dirname($itemRealPath);
+						$relativePath = '';
+
+						if ($dirRealPath !== $realPath) {
+							$relativePath = substr($dirRealPath, strlen($realPath) + 1);
+						}
+
+						$files[] = [
+							'relativePath' => $relativePath,
+							'filename'     => pathinfo($item->getFilename(), PATHINFO_FILENAME),
+						];
 					}
 				}
-			}
-			catch (\Throwable $e) {
-				return [];
+				catch (\Throwable $e) {
+					continue;
+				}
 			}
 		}
+		catch (\Throwable $e) {
+			return [];
+		}
 
-		// 3. Map danh sách file thu thập được sang tên Class
+		// Map danh sách file thu thập được sang tên Class
 		$classes = [];
+
 		foreach ($files as $fileData) {
 			try {
 				$relativePath = $fileData['relativePath'];
@@ -522,38 +506,13 @@ class Funcs extends BaseInstances {
 		return $classes;
 	}
 
-	public function _getAllDirsInDir(string $path, $depth = null): array {
+	public function _getAllDirsInDir($path, $depth = null): array {
+		// 1. Kiểm tra nếu đường dẫn không tồn tại hoặc không phải thư mục
 		if (!is_dir($path)) {
 			return [];
 		}
 
-		// 1. Sử dụng Symfony Finder nếu class tồn tại
-		if (class_exists('\Symfony\Component\Finder\Finder')) {
-			$finder = new \Symfony\Component\Finder\Finder();
-			$finder->directories()->in($path);
-
-			if ($depth !== null) {
-				$finder->depth($depth);
-			}
-
-			$directories = [];
-			foreach ($finder as $dir) {
-				try {
-					$directories[] = [
-						'name'          => $dir->getFilename(),
-						'absolute_path' => $dir->getRealPath(),
-						'relative_path' => $dir->getRelativePathname(),
-					];
-				}
-				catch (\Throwable $e) {
-					continue;
-				}
-			}
-
-			return $directories;
-		}
-
-		// 2. Fallback sử dụng Native PHP (SPL)
+		// Sử dụng Native PHP (SPL)
 		$realPath = realpath($path);
 		if ($realPath === false) {
 			return [];
@@ -566,7 +525,7 @@ class Funcs extends BaseInstances {
 			$directoryIterator = new \RecursiveDirectoryIterator($realPath, $flags);
 			$iterator          = new \RecursiveIteratorIterator($directoryIterator, \RecursiveIteratorIterator::SELF_FIRST);
 
-			// Giới hạn độ sâu nếu $depth được truyền vào
+			// Tùy chỉnh độ sâu nếu được truyền vào
 			if ($depth !== null) {
 				$maxDepth = is_numeric($depth) ? (int)$depth : $this->_parseDepthString($depth);
 				if ($maxDepth !== null) {
@@ -1847,10 +1806,6 @@ class Funcs extends BaseInstances {
 	 */
 
 	public static function __callStatic($method, $parameters) {
-		if ($method == 'instance') {
-			return new static();
-		}
-
 		$method = '_' . $method;
 
 		if (!method_exists(static::class, $method)) {

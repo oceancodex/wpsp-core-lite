@@ -30,6 +30,11 @@ class Commands {
 
 	protected $bootstrapped = false;
 
+	protected $lastOutput = '';
+
+	/** true khi đang chạy qua call(): mọi output (kể cả lỗi) đi vào buffer. */
+	protected $buffering = false;
+
 	public $useColor;
 
 	public $except = [
@@ -42,7 +47,9 @@ class Commands {
 
 	public function __construct(Application $app) {
 		$this->app      = $app;
-		$this->useColor = getenv('NO_COLOR') === false && (!function_exists('stream_isatty') || @stream_isatty(STDOUT));
+		$this->useColor = getenv('NO_COLOR') === false
+			&& defined('STDOUT')
+			&& (!function_exists('stream_isatty') || @stream_isatty(STDOUT));
 
 //		$this->pending[] = dirname(__DIR__, 2) . '/Console/Commands';
 //		$this->pending[] = $app->path('Console/Commands');
@@ -139,7 +146,9 @@ class Commands {
 				}
 			}
 			catch (\Throwable $e) {
-				fwrite(STDERR, $this->color('[!] Could not load ' . $file . ': ' . $e->getMessage(), 'yellow') . PHP_EOL);
+				defined('STDERR')
+					? $this->writeError($this->color('[!] Could not load ' . $file . ': ' . $e->getMessage(), 'yellow') . PHP_EOL)
+					: $this->color('[!] Could not load ' . $file . ': ' . $e->getMessage(), 'yellow');
 				continue;
 			}
 
@@ -231,7 +240,60 @@ class Commands {
 	public function run(?array $argv = null) {
 		$tokens = array_slice($argv ?? $_SERVER['argv'] ?? [], 1);
 
-		// Tên command = token đầu tiên không bắt đầu bằng "-".
+		foreach (['--no-ansi' => false, '--ansi' => true] as $flag => $value) {
+			if (in_array($flag, $tokens, true)) {
+				$this->useColor = $value;
+				$tokens         = array_values(array_diff($tokens, [$flag]));
+			}
+		}
+
+		return $this->dispatch($tokens);
+	}
+
+	/**
+	 * Như gõ trên terminal nhưng output được buffer lại:
+	 *   Artisan::call();                                     // = php artisan
+	 *   Artisan::call('list');                               // = php artisan list
+	 *   Artisan::call('list', ['make']);                     // = php artisan list make
+	 *   Artisan::call('help', ['make:admin-page']);          // = php artisan help make:admin-page
+	 *   Artisan::call('make:admin-page', ['name' => 'Foo', '--force' => true]);
+	 * Lấy kết quả: output() (text thuần) hoặc outputHtml() (giữ màu).
+	 */
+	public function call($name = null, array $parameters = []) {
+		$tokens = $this->parametersToTokens($parameters);
+
+		if ($name !== null && $name !== '') {
+			if (!in_array($name, ['list', 'help'], true)) {
+				array_unshift($tokens, '--no-interaction');
+			}
+			array_unshift($tokens, $name);
+		}
+
+		$previous        = [$this->buffering, $this->useColor];
+		$this->buffering = true;
+		$this->useColor  = true; // giữ mã màu để outputHtml() dựng lại; output() sẽ bỏ đi.
+
+		ob_start();
+		try {
+			return $this->dispatch($tokens);
+		}
+		finally {
+			$this->lastOutput = ob_get_clean();
+			[$this->buffering, $this->useColor] = $previous;
+		}
+	}
+
+	/**
+	 * Chạy và in trực tiếp, ném exception (dùng cho $this->call() bên trong command).
+	 */
+	public function runCommand($name, array $parameters = []) {
+		return $this->find($name)->run($this->parametersToTokens($parameters));
+	}
+
+	/**
+	 * Logic chung của terminal: tách tên command, list/help, render lỗi.
+	 */
+	protected function dispatch(array $tokens) {
 		$name = null;
 		foreach ($tokens as $i => $token) {
 			if ($token === '--') break;
@@ -243,20 +305,12 @@ class Commands {
 		}
 		$tokens = array_values($tokens);
 
-		foreach (['--no-ansi' => false, '--ansi' => true] as $flag => $value) {
-			if (in_array($flag, $tokens, true)) {
-				$this->useColor = $value;
-				$tokens         = array_values(array_diff($tokens, [$flag]));
-			}
-		}
-
 		try {
 			if ($name === null || $name === 'list') {
 				$this->renderList($name === 'list' ? ($tokens[0] ?? null) : null);
 				return 0;
 			}
 
-			// php artisan help make:admin-page
 			if ($name === 'help') {
 				if (!isset($tokens[0])) {
 					$this->renderList();
@@ -274,12 +328,48 @@ class Commands {
 		}
 	}
 
-	/**
-	 * Gọi command từ code, như Artisan::call().
-	 * $parameters: ['name' => 'Foo', '--force' => true, '--tag' => ['a', 'b']]
+	/*
+	 * ---
+	 * Output.
+	 * ---
 	 */
-	public function call($name, array $parameters = []) {
-		return $this->find($name)->run($this->parametersToTokens($parameters));
+
+	public function output() {
+		return preg_replace('/\033\[[0-9;]*m/', '', $this->lastOutput);
+	}
+
+	/**
+	 * Output đã escape, chuyển mã màu ANSI => <span style>. Bọc trong <pre> khi hiển thị.
+	 */
+	public function outputHtml() {
+		$styles = [
+			'1'     => 'font-weight:bold',
+			'31'    => 'color:#f47067',
+			'32'    => 'color:#57ab5a',
+			'33'    => 'color:#c69026',
+			'34'    => 'color:#539bf5',
+			'90'    => 'color:#768390',
+			'37;41' => 'color:#fff;background:#c93c37',
+		];
+
+		$html = htmlspecialchars($this->lastOutput, ENT_QUOTES, 'UTF-8');
+
+		$html = preg_replace_callback('/\033\[([0-9;]+)m(.*?)\033\[0m/s', function($m) use ($styles) {
+			return isset($styles[$m[1]]) ? '<span style="' . $styles[$m[1]] . '">' . $m[2] . '</span>' : $m[2];
+		}, $html);
+
+		return preg_replace('/\033\[[0-9;]*m/', '', $html);
+	}
+
+	/**
+	 * Ghi lỗi: vào buffer khi đang call(), vào STDERR khi chạy CLI.
+	 */
+	public function writeError($text) {
+		if ($this->buffering || !defined('STDERR')) {
+			echo $text;
+			return;
+		}
+		fwrite(STDERR, $text);
 	}
 
 	protected function parametersToTokens(array $parameters) {
@@ -360,15 +450,15 @@ class Commands {
 		$lines = explode("\n", $e->getMessage());
 		$width = max(array_map('mb_strlen', $lines)) + 4;
 
-		fwrite(STDERR, PHP_EOL);
-		fwrite(STDERR, '  ' . $this->color(str_repeat(' ', $width), 'error') . PHP_EOL);
+		$this->writeError(PHP_EOL);
+		$this->writeError('  ' . $this->color(str_repeat(' ', $width), 'error') . PHP_EOL);
 		foreach ($lines as $line) {
-			fwrite(STDERR, '  ' . $this->color('  ' . $line . str_repeat(' ', $width - mb_strlen($line) - 2), 'error') . PHP_EOL);
+			$this->writeError('  ' . $this->color('  ' . $line . str_repeat(' ', $width - mb_strlen($line) - 2), 'error') . PHP_EOL);
 		}
-		fwrite(STDERR, '  ' . $this->color(str_repeat(' ', $width), 'error') . PHP_EOL . PHP_EOL);
+		$this->writeError('  ' . $this->color(str_repeat(' ', $width), 'error') . PHP_EOL . PHP_EOL);
 
 		if (!($e instanceof \InvalidArgumentException) || getenv('XCONSOLE_DEBUG') || $this->app->hasDebugModeEnabled()) {
-			fwrite(STDERR, $this->color('  at ' . $e->getFile() . ':' . $e->getLine(), 'gray') . PHP_EOL . PHP_EOL);
+			$this->writeError($this->color('  at ' . $e->getFile() . ':' . $e->getLine(), 'gray') . PHP_EOL . PHP_EOL);
 		}
 	}
 
