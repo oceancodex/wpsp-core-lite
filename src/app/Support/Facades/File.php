@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORELITE\App\Support\Facades\File;
+namespace WPSPCORELITE\App\Support\Facades;
 
 use WPSPCORELITE\App\Filesystem\Filesystem as FilesystemCore;
 use WPSPCORELITE\BaseInstances;
