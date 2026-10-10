@@ -9,7 +9,7 @@
 namespace WPSPCORELITE\App;
 
 use WPSPCORELITE\App\Filesystem\Filesystem;
-use WPSPCORELITE\App\Http\Request;
+use WPSPCORELITE\App\Http\Request as WPSPCORE_Http_Request;
 use WPSPCORELITE\App\Support\Facades\Facade;
 
 /**
@@ -20,8 +20,14 @@ use WPSPCORELITE\App\Support\Facades\Facade;
  * - Paths, environment, locale, service providers (kể cả deferred), boot/terminate.
  * - Cấu hình fluent: Application::configure($basePath)->withProviders([...])->withSingletons([...])->create().
  *
- * Service provider: bất kỳ class nào có register() và/hoặc boot(); thuộc tính public
- * $bindings / $singletons; deferred khi có provides() và isDeferred() === true.
+ * Service provider: nên extends WPSPCORELITE\App\Support\ServiceProvider (hoặc bất kỳ class
+ * nào có register() và/hoặc boot()); thuộc tính public $bindings / $singletons;
+ * deferred khi implements DeferrableProvider (có provides() và isDeferred() === true).
+ *
+ * Thứ tự nạp provider (giống Laravel 11+), chạy một lần trong create() hoặc boot():
+ *   1. config('app.providers') nếu có binding 'config', ngược lại DefaultProviders của core.
+ *   2. bootstrap/providers.php của plugin (return [Provider::class, ...]).
+ *   3. Provider truyền vào withProviders([...]).
  */
 class Application extends Container {
 
@@ -58,6 +64,15 @@ class Application extends Container {
 	/** service => provider (object|class) */
 	protected $deferredServices = [];
 
+	/** Provider chờ registerConfiguredProviders() (từ withProviders()). */
+	protected $pendingProviders = [];
+
+	/** Có nạp bootstrap/providers.php hay không. */
+	protected $withBootstrapProviders = false;
+
+	/** registerConfiguredProviders() đã chạy chưa. */
+	protected $providersRegistered = false;
+
 	public function __construct($basePath = null) {
 		if ($basePath) {
 			$this->setBasePath($basePath);
@@ -73,14 +88,29 @@ class Application extends Container {
 	 * ---
 	 */
 
+	/**
+	 * Giống Laravel: configure() tự gọi withProviders() => bootstrap/providers.php được nạp mặc định.
+	 */
 	public static function configure($basePath = null) {
-		return new static($basePath ?? getcwd());
+		return (new static($basePath ?? getcwd()))->withProviders();
 	}
 
-	public function withProviders(array $providers) {
-		foreach ($providers as $provider) {
-			$this->register($provider);
+	/**
+	 * Thêm provider. Provider được register trong create()/boot() theo đúng thứ tự
+	 * (default → bootstrap/providers.php → danh sách này). Nếu gọi sau khi đã
+	 * register xong thì register ngay.
+	 */
+	public function withProviders(array $providers = [], $withBootstrapProviders = true) {
+		$this->withBootstrapProviders = $this->withBootstrapProviders || $withBootstrapProviders;
+
+		if ($this->providersRegistered) {
+			foreach ($providers as $provider) {
+				$this->register($provider);
+			}
+			return $this;
 		}
+
+		$this->pendingProviders = array_merge($this->pendingProviders, $providers);
 		return $this;
 	}
 
@@ -124,6 +154,7 @@ class Application extends Container {
 	}
 
 	public function create() {
+		$this->registerConfiguredProviders();
 		return $this;
 	}
 
@@ -143,6 +174,7 @@ class Application extends Container {
 			return Request::capture();
 		});
 
+		// Giống Illuminate\Filesystem\FilesystemServiceProvider::registerNativeFilesystem().
 		$this->singleton('files', function() {
 			return new Filesystem();
 		});
@@ -389,6 +421,59 @@ class Application extends Container {
 	 * ---
 	 */
 
+	public function getBootstrapProvidersPath() {
+		return $this->bootstrapPath('providers.php');
+	}
+
+	/**
+	 * Register toàn bộ provider đã cấu hình (chỉ chạy một lần).
+	 * Tương đương Illuminate\Foundation\Bootstrap\RegisterProviders + registerConfiguredProviders().
+	 */
+	public function registerConfiguredProviders() {
+		if ($this->providersRegistered) {
+			return;
+		}
+
+		$this->providersRegistered = true;
+
+		$providers = $this->configuredProviders();
+
+		if ($this->withBootstrapProviders) {
+			$path = $this->getBootstrapProvidersPath();
+
+			if (is_file($path)) {
+				$providers = array_merge($providers, (array)require $path);
+			}
+		}
+
+		$providers              = array_merge($providers, $this->pendingProviders);
+		$this->pendingProviders = [];
+
+		// register() tự bỏ qua provider đã đăng ký => không bị trùng.
+		foreach ($providers as $provider) {
+			$this->register($provider);
+		}
+	}
+
+	/**
+	 * config('app.providers') nếu có, ngược lại DefaultProviders của core.
+	 */
+	protected function configuredProviders() {
+		if ($this->bound('config')) {
+			$config = $this->make('config');
+
+			if (is_object($config) && method_exists($config, 'get')) {
+				$providers = $config->get('app.providers');
+
+				if (is_array($providers) && $providers) {
+					return $providers;
+				}
+			}
+		}
+
+		return (new DefaultProviders())->toArray();
+	}
+
 	/**
 	 * Đăng ký provider (class name hoặc object). Trả về instance provider.
 	 */
@@ -535,6 +620,9 @@ class Application extends Container {
 			return;
 		}
 
+		// Phòng trường hợp không gọi create().
+		$this->registerConfiguredProviders();
+
 		$this->fireAppCallbacks($this->bootingCallbacks);
 
 		foreach ($this->serviceProviders as $provider) {
@@ -547,8 +635,16 @@ class Application extends Container {
 	}
 
 	protected function bootProvider($provider) {
+		if (method_exists($provider, 'callBootingCallbacks')) {
+			$provider->callBootingCallbacks();
+		}
+
 		if (method_exists($provider, 'boot')) {
 			$this->call([$provider, 'boot']);
+		}
+
+		if (method_exists($provider, 'callBootedCallbacks')) {
+			$provider->callBootedCallbacks();
 		}
 	}
 
@@ -615,14 +711,17 @@ class Application extends Container {
 	public function flush() {
 		parent::flush();
 
-		$this->paths                = [];
-		$this->bootingCallbacks     = [];
-		$this->bootedCallbacks      = [];
-		$this->terminatingCallbacks = [];
-		$this->serviceProviders     = [];
-		$this->loadedProviders      = [];
-		$this->deferredServices     = [];
-		$this->booted               = false;
+		$this->paths                  = [];
+		$this->bootingCallbacks       = [];
+		$this->bootedCallbacks        = [];
+		$this->terminatingCallbacks   = [];
+		$this->serviceProviders       = [];
+		$this->loadedProviders        = [];
+		$this->deferredServices       = [];
+		$this->pendingProviders       = [];
+		$this->withBootstrapProviders = false;
+		$this->providersRegistered    = false;
+		$this->booted                 = false;
 	}
 
 }

@@ -49,6 +49,7 @@ abstract class WPSP extends BaseInstances {
 
 	public function buildApplication($basePath): void {
 		$this->application = WPSPLiteApplication::configure($basePath)
+			->withProviders($this->getCustomProviders())
 			->withCommands($this->getCustomCommands());
 	}
 
@@ -79,6 +80,19 @@ abstract class WPSP extends BaseInstances {
 			$this->funcs->_getAllClassesInDir(
 				$this->funcs->_getAppPath('/Console/Commands'),
 				$this->funcs->_getRootNamespace() . '\App\Console\Commands'
+			),
+		);
+	}
+
+	public function getCustomProviders() {
+		return array_merge(
+			$this->funcs->_getAllClassesInDir(
+				__DIR__ . '/app/Providers',
+				'WPSPCORELITE\App\Providers'
+			),
+			$this->funcs->_getAllClassesInDir(
+				$this->funcs->_getAppPath('/Providers'),
+				$this->funcs->_getRootNamespace() . '\App\Providers'
 			),
 		);
 	}
