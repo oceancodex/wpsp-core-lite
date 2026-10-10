@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\ThemeTemplates;
+namespace WPSPCORELITE\App\WordPress\ThemeTemplates;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseThemeTemplates extends BaseInstances {
 

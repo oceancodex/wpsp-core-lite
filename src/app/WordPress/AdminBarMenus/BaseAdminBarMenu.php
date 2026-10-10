@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\AdminBarMenus;
+namespace WPSPCORELITE\App\WordPress\AdminBarMenus;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseAdminBarMenu extends BaseInstances {
 

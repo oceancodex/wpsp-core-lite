@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\NavigationMenus\Menus;
+namespace WPSPCORELITE\App\WordPress\NavigationMenus\Menus;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @method static static instance

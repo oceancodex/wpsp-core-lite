@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes;
+namespace WPSPCORELITE\App\Routes;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 class RouteManager extends BaseInstances {
 
@@ -10,8 +10,11 @@ class RouteManager extends BaseInstances {
 	 * Danh sách toàn bộ route đã được tạo.
 	 * Mỗi phần tử là một đối tượng RouteData.
 	 */
-	private $routes = [];
+	private $routes       = [];
 	private $routeByTypes = [];
+
+	public $matchedRoutes 			= [];
+	public ?RouteData $currentRoute = null;
 
 	/**
 	 * Stack chứa các group attributes (prefix, name, middlewares)\
@@ -175,22 +178,27 @@ class RouteManager extends BaseInstances {
 	/**
 	 * Thực thi một route đã được xác định.
 	 *
-	 * @param object $routeItem Đối tượng chứa thông tin về route cần thực thi, bao gồm loại route, phương thức,
+	 * @param ?RouteData $routeItem Đối tượng chứa thông tin về route cần thực thi, bao gồm loại route, phương thức,
 	 *                          và các thông tin khác liên quan đến route như tên, middlewares, callback, v.v.
 	 *
 	 * @return void
 	 */
 	public function executeRoute($routeItem) {
-		$type        = $routeItem->type;
-		$route       = $routeItem->route;
-//		$parentRoute = '\\' . trim($routeItem->parentRoute, '\\');
-		$method      = $routeItem->method;
-//		$path        = $routeItem->path;
-//		$fullPath    = $routeItem->fullPath;
-//		$callback    = $routeItem->callback;
-//		$args        = $routeItem->args;
-//		$name        = $routeItem->name;
-//		$middlewares = $routeItem->middlewares;
+		$type          = $routeItem->type;
+		$route         = $routeItem->route;
+//		$parentRoute   = '\\' . trim($routeItem->parentRoute, '\\');
+		$method        = $routeItem->method;
+		$path          = $routeItem->path;
+		$pathRegex     = $routeItem->pathRegex;
+		$fullPath      = $routeItem->fullPath;
+		$fullPathRegex = $routeItem->fullPathRegex;
+//		$callback      = $routeItem->callback;
+//		$args          = $routeItem->args;
+//		$name          = $routeItem->name;
+//		$middlewares   = $routeItem->middlewares;
+
+		// Measure key cho Laravel Debugbar.
+		$measureKey = $type . '|' . $method . '|' . $fullPath;
 
 		/**
 		 * Nếu route là Actions hoặc Filters thì method sẽ là "action" và "filter".\
@@ -205,7 +213,30 @@ class RouteManager extends BaseInstances {
 			$route::instance()->remove_hook($routeItem);
 		}
 		else {
+			// Set "currentRoute" là route đang truy cập thực sự qua URL.
+			if (in_array($type, ['AdminPages', 'Apis', 'Ajaxs', 'FrontPages', 'RewriteFrontPages'])) {
+				$requestPath = ltrim($this->request->getRequestUri(), '/\\');
+				$requestMethod = $this->request->method();
+
+				if (
+					$requestMethod == strtoupper($method)
+					&& (
+						@preg_match('/' . $this->funcs->_regexPath($fullPath) . '$/iu', $requestPath)
+						|| @preg_match('/' . $this->funcs->_regexPath($fullPath) . '/iu', $requestPath)
+						|| @preg_match('/' . $fullPath . '/iu', $requestPath)
+						|| @preg_match($fullPathRegex, $requestPath)
+					)
+				) {
+					$this->addMatchedRoute($routeItem);
+
+					do_action($this->funcs->_getAppShortName() . '_add_matched_route', $routeItem, $measureKey);
+				}
+			}
+
+			// Chạy route.
 			$route::instance()->execute($routeItem);
+
+			do_action($this->funcs->_getAppShortName() . '_after_execute_route', $routeItem, $measureKey);
 		}
 	}
 
@@ -233,6 +264,37 @@ class RouteManager extends BaseInstances {
 				$this->executeRoute($routeItem);
 			}
 		}
+	}
+
+	/*
+	 *
+	 */
+
+	public function addMatchedRoute(?RouteData $route) {
+		$key = md5(
+			$route->type . '|' .
+			$route->method . '|' .
+			$route->fullPath . '|' .
+			$route->name
+		);
+
+//		$this->matchedRoutes[]     = $route;
+		$this->matchedRoutes[$key] = $route;
+		$this->currentRoute        = $route;
+	}
+
+	public function clearMatchedRoutes() {
+		$this->matchedRoutes = [];
+		$this->currentRoute  = null;
+	}
+
+	public function currentRoute(): ?RouteData {
+		return $this->currentRoute;
+	}
+
+	public function matchedRoutes() {
+//		return $this->matchedRoutes;
+		return array_values($this->matchedRoutes);
 	}
 
 }

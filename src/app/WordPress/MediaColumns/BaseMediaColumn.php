@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\MediaColumns;
+namespace WPSPCORELITE\App\WordPress\MediaColumns;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @method void sort($query)

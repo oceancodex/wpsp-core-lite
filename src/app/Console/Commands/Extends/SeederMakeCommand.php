@@ -1,11 +1,11 @@
 <?php
 
-namespace WPSPCORE\App\Console\Commands\Extends;
+namespace WPSPCORELITE\App\Console\Commands\Extends;
 
 use Illuminate\Database\Console\Seeds\SeederMakeCommand as Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use WPSPCORE\App\Console\Traits\CommandsTrait;
+use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class SeederMakeCommand extends Command {
 

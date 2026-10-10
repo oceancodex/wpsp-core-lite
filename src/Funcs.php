@@ -1,17 +1,19 @@
 <?php
 
-namespace WPSPCORE;
+namespace WPSPCORELITE;
 
 use Carbon\Carbon;
+use WPSPCORELITE\App\Http\Request;
 use Illuminate\View\View;
 use NumberFormatter;
+use WPSPCORELITE\App\Routes\RouteRegexParser;
 
 /**
  * @method static mixed getWPSP()
  * @method static string getWPSPClass()
  * @method static mixed getApplication($abstract = null, array $parameters = [])
- * @method static \WPSPCORE\App\Routes\RouteMap|null getRouteMap()
- * @method static \WPSPCORE\App\Routes\RouteManager|null getRouteManager()
+ * @method static \WPSPCORELITE\App\Routes\RouteMap|null getRouteMap()
+ * @method static \WPSPCORELITE\App\Routes\RouteManager|null getRouteManager()
  *
  * @method static string getMainPath($path = null)
  * @method static string getRootNamespace()
@@ -23,6 +25,7 @@ use NumberFormatter;
  * @method static string getSitePath($appendPath = null)
  * @method static string getMainFilePath()
  * @method static string getAppPath($path = null)
+ * @method static string getBootstrapPath($path = null)
  * @method static string getControllerPath($path = null)
  * @method static string getConfigPath($path = null)
  * @method static string getRoutesPath($path = null)
@@ -47,12 +50,14 @@ use NumberFormatter;
  * @method static string getDBCustomMigrationTableName(string $name)
  *
  * @method static string getPathFromDir(string $targetDir, string $path)
- * @method static array getAllClassesInDir(string $namespace = __NAMESPACE__, string $path = __DIR__)
+ * @method static array getAllClassesInDir(string $path = __DIR__, string $namespace = __NAMESPACE__)
  *
  * @method static mixed getArrItemByKeyDots(array $array, string $key)
  * @method static mixed getArrItemByKeyValue(array $arr, string $key, $value = null, string $operator = 'equals', bool $single = true)
  *
  * @method static string getPluginDirName()
+ * @method static string getPluginDirNameFromPath(string $path)
+ * @method static string getPluginDirPathFromPath(string $path)
  * @method static array getWPConfig(string $file = null)
  *
  * @method static mixed app($abstract, array $parameters = [])
@@ -60,6 +65,7 @@ use NumberFormatter;
  * @method static \Illuminate\View\View|string|null view($viewName = null, array $data = [], array $mergeData = [], bool $instance = false)
  *
  * @method static void debug($message = '', bool $print = false, bool $varDump = false)
+ * @method static \Fruitcake\LaravelDebugbar\LaravelDebugbar|mixed|null debugBar()
  * @method static string|null asset(string $path, $secure = null)
  *
  * @method static string route($routeMap, $routeClass, $routeName, array $args = [], bool $buildURL = false, bool $sanitize = true)
@@ -75,6 +81,7 @@ use NumberFormatter;
  * @method static \Illuminate\View\Factory|null viewInstance()
  *
  * @method static bool isDebug()
+ * @method static bool isDebugBarValid()
  * @method static bool isWPDebug()
  * @method static bool isWPDebugLog()
  * @method static bool isWPDebugDisplay()
@@ -87,7 +94,8 @@ use NumberFormatter;
  * @method static bool folderExists($path = null)
  * @method static bool vendorFolderExists($package = null)
  * @method static bool hasQueryParams($queryString = null, $targetParams = null, string $relation = 'or')
- * @method static bool onlyHasQueryParams($queryString = null, $allowedParams = null)
+ * @method static bool isOnlyHasQueryParams($queryString = null, $allowedParams = null)
+ * @method static bool isWPInternalRequest($request = null)
  *
  * @method static string buildUrl($baseUrl = null, array $args = [])
  * @method static string nonceName($name = null)
@@ -117,6 +125,7 @@ use NumberFormatter;
 class Funcs extends BaseInstances {
 
 	public $WPSPClass;
+	public $requestClass;
 	public $routeMapClass;
 	public $routeManagerClass;
 
@@ -125,8 +134,9 @@ class Funcs extends BaseInstances {
 	 */
 
 	public function afterConstruct() {
-		$this->WPSPClass = '\\' . $this->rootNamespace . '\WPSP';
-		$this->routeMapClass = '\\' . $this->rootNamespace . '\App\Widen\Routes\RouteMap';
+		$this->WPSPClass         = '\\' . $this->rootNamespace . '\WPSP';
+		$this->requestClass      = '\\' . $this->rootNamespace . '\App\Http\Request';
+		$this->routeMapClass     = '\\' . $this->rootNamespace . '\App\Widen\Routes\RouteMap';
 		$this->routeManagerClass = '\\' . $this->rootNamespace . '\App\Widen\Routes\RouteManager';
 	}
 
@@ -148,6 +158,10 @@ class Funcs extends BaseInstances {
 		return $this->WPSPClass;
 	}
 
+	public function _getRequestClass() {
+		return $this->requestClass;
+	}
+
 	/**
 	 * @return \Illuminate\Foundation\Application|\Illuminate\Container\Container|mixed
 	 */
@@ -167,7 +181,7 @@ class Funcs extends BaseInstances {
 	}
 
 	/**
-	 * @return \WPSPCORE\App\Routes\RouteMap
+	 * @return \WPSPCORELITE\App\Routes\RouteMap
 	 */
 	public function _getRouteMap() {
 		try {
@@ -180,7 +194,7 @@ class Funcs extends BaseInstances {
 	}
 
 	/**
-	 * @return \WPSPCORE\App\Routes\RouteManager
+	 * @return \WPSPCORELITE\App\Routes\RouteManager
 	 */
 	public function _getRouteManager() {
 		try {
@@ -197,15 +211,16 @@ class Funcs extends BaseInstances {
 	 */
 
 	public function _getMainPath($path = null) {
-		return rtrim($this->mainPath, '/\\') . ($path ? '/' . ltrim($path, '/\\') : '');
+		$path = rtrim($this->mainPath, '/\\') . ($path ? '/' . ltrim($path, '/\\') : '');
+		return $this->_normalizePath($path);
 	}
 
 	public function _getRootNamespace() {
 		return $this->rootNamespace;
 	}
 
-	public function _getPrefixEnv() {
-		return $this->prefixEnv;
+	public function _getPrefixEnv($suffix = null) {
+		return $this->prefixEnv . $suffix;
 	}
 
 	/*
@@ -213,7 +228,7 @@ class Funcs extends BaseInstances {
 	 */
 
 	public function _getBearerToken($request = null) {
-		$request = $request ?? $this->_getApplication('request') ?? null;
+		$request = $request ?? $this->_app('request') ?? null;
 
 		// --- Lấy raw header ---
 		if ($request && method_exists($request, 'headers')) {
@@ -233,7 +248,7 @@ class Funcs extends BaseInstances {
 		}
 
 		// --- Parse Bearer token ---
-		if (preg_match('/Bearer\s+(\S+)/i', trim($authHeader), $matches)) {
+		if (@preg_match('/Bearer\s+(\S+)/i', trim($authHeader), $matches)) {
 			return trim($matches[1]);
 		}
 
@@ -258,18 +273,27 @@ class Funcs extends BaseInstances {
 			$path = preg_replace('/^(.+?)wp-content(.+?)$/iu', '$1', $path);
 		}
 		$path = rtrim($path, '/\\');
+
 		if ($appendPath) {
 			$path .= '/' . ltrim($appendPath, '/\\');
 		}
-		return $path;
+
+		return $this->_normalizePath($path);
 	}
 
 	public function _getMainFilePath() {
-		return $this->_getMainPath() . '/main.php';
+		$path = $this->_getMainPath() . '/main.php';
+		return $this->_normalizePath($path);
 	}
 
 	public function _getAppPath($path = null) {
-		return $this->_getMainPath() . '/app' . ($path ? '/' . ltrim($path, '/\\') : '');
+		$path = $this->_getMainPath() . '/app' . ($path ? '/' . ltrim($path, '/\\') : '');
+		return $this->_normalizePath($path);
+	}
+
+	public function _getBootstrapPath($path = null) {
+		$path = $this->_getMainPath() . '/bootstrap' . ($path ? '/' . ltrim($path, '/\\') : '');
+		return $this->_normalizePath($path);
 	}
 
 	public function _getControllerPath($path = null) {
@@ -379,30 +403,99 @@ class Funcs extends BaseInstances {
 	}
 
 	public function _getPathFromDir($targetDir, $path) {
-		return preg_replace('/^(.*?)' . $targetDir . '(.*?)$/iu', $targetDir . '$2', $path);
+		// 1. Chuẩn hóa tạm thời cả targetDir và path về dạng gạch xuôi '/' để xử lý regex chính xác và không bị lỗi escape kí tự '\'
+		$normalizedTargetDir = str_replace('\\', '/', $targetDir);
+		$normalizedPath      = str_replace('\\', '/', $path);
+
+		// 2. Thực hiện khớp và thay thế chuỗi bằng regex dựa trên chuỗi đã chuẩn hóa
+		$result = preg_replace(
+			'/^(.*?)' . preg_quote($normalizedTargetDir, '/') . '(.*?)$/iu',
+			$normalizedTargetDir . '$2',
+			$normalizedPath
+		);
+
+		// 3. CHUẨN HÓA ĐẦU RA: Chuyển đổi toàn bộ dấu gạch chéo về đúng định dạng hệ điều hành hiện tại
+		return $this->_normalizePath($result);
 	}
 
-	public function _getAllClassesInDir($namespace = __NAMESPACE__, $path = __DIR__) {
-		$finder = new \Symfony\Component\Finder\Finder();
-		$finder->files()->in($path)->name('*.php'); // Finder tự động recursive
+	public function _getAllClassesInDir($path = __DIR__, $namespace = __NAMESPACE__, $depth = null): array {
+		if (!is_dir($path)) {
+			return [];
+		}
 
-		foreach ($finder as $file) {
-			// Tính relative path từ $path đến file để build đúng namespace
-			$relativePath = $file->getRelativePath(); // vd: "SubDir/ChildDir"
+		$files = [];
 
-			if ($relativePath) {
-				$subNamespace = str_replace(DIRECTORY_SEPARATOR, '\\', $relativePath);
-				$className = rtrim($namespace, '\\') . '\\' . $subNamespace . '\\' . $file->getFilenameWithoutExtension();
-			} else {
-				$className = rtrim($namespace, '\\') . '\\' . $file->getFilenameWithoutExtension();
+
+		// Sử dụng Native PHP (SPL)
+		$realPath = realpath($path);
+		if ($realPath === false) {
+			return [];
+		}
+
+		$flags = \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO;
+
+		try {
+			$directoryIterator = new \RecursiveDirectoryIterator($realPath, $flags);
+			$iterator          = new \RecursiveIteratorIterator($directoryIterator, \RecursiveIteratorIterator::SELF_FIRST);
+
+			if ($depth !== null) {
+				$maxDepth = is_numeric($depth) ? (int)$depth : $this->_parseDepthString($depth);
+				if ($maxDepth !== null) {
+					$iterator->setMaxDepth($maxDepth);
+				}
 			}
 
+			foreach ($iterator as $item) {
+				try {
+					// Chỉ lấy file có đuôi .php
+					if ($item->isFile() && $item->getExtension() === 'php') {
+						$itemRealPath = $item->getRealPath();
+						if ($itemRealPath === false) {
+							continue;
+						}
+
+						// Tính relative path của thư mục chứa file
+						$dirRealPath  = dirname($itemRealPath);
+						$relativePath = '';
+
+						if ($dirRealPath !== $realPath) {
+							$relativePath = substr($dirRealPath, strlen($realPath) + 1);
+						}
+
+						$files[] = [
+							'relativePath' => $relativePath,
+							'filename'     => pathinfo($item->getFilename(), PATHINFO_FILENAME),
+						];
+					}
+				}
+				catch (\Throwable $e) {
+					continue;
+				}
+			}
+		}
+		catch (\Throwable $e) {
+			return [];
+		}
+
+		// Map danh sách file thu thập được sang tên Class
+		$classes = [];
+
+		foreach ($files as $fileData) {
 			try {
+				$relativePath = $fileData['relativePath'];
+
+				// Chuẩn hóa đường dẫn thư mục thành Namespace (hỗ trợ cả Windows & Linux)
+				$subNamespace = $relativePath ? str_replace(['/', '\\'], '\\', $relativePath) : '';
+
+				// Build namespace đầy đủ
+				$className = rtrim($namespace, '\\');
+				if ($subNamespace) {
+					$className .= '\\' . trim($subNamespace, '\\');
+				}
+				$className .= '\\' . $fileData['filename'];
+
 				if (class_exists($className) && $className !== __CLASS__) {
 					$classes[] = $className;
-				}
-				else {
-					continue;
 				}
 			}
 			catch (\Throwable $e) {
@@ -410,7 +503,130 @@ class Funcs extends BaseInstances {
 			}
 		}
 
-		return $classes ?? [];
+		return $classes;
+	}
+
+	public function _getAllDirsInDir($path, $depth = null): array {
+		// 1. Kiểm tra nếu đường dẫn không tồn tại hoặc không phải thư mục
+		if (!is_dir($path)) {
+			return [];
+		}
+
+		// Sử dụng Native PHP (SPL)
+		$realPath = realpath($path);
+		if ($realPath === false) {
+			return [];
+		}
+
+		$directories = [];
+		$flags       = \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO;
+
+		try {
+			$directoryIterator = new \RecursiveDirectoryIterator($realPath, $flags);
+			$iterator          = new \RecursiveIteratorIterator($directoryIterator, \RecursiveIteratorIterator::SELF_FIRST);
+
+			// Tùy chỉnh độ sâu nếu được truyền vào
+			if ($depth !== null) {
+				$maxDepth = is_numeric($depth) ? (int)$depth : $this->_parseDepthString($depth);
+				if ($maxDepth !== null) {
+					$iterator->setMaxDepth($maxDepth);
+				}
+			}
+
+			$basePathLength = strlen($realPath) + 1; // Chiều dài gốc để tính relative_path
+
+			foreach ($iterator as $item) {
+				try {
+					if ($item->isDir()) {
+						$itemRealPath = $item->getRealPath();
+						if ($itemRealPath === false) {
+							continue;
+						}
+
+						// Tính đường dẫn tương đối chuẩn xác
+						$relativePath = substr($itemRealPath, $basePathLength);
+
+						$directories[] = [
+							'name'          => $item->getFilename(),
+							'absolute_path' => $itemRealPath,
+							'relative_path' => $relativePath,
+						];
+					}
+				}
+				catch (\Throwable $e) {
+					continue;
+				}
+			}
+		}
+		catch (\Throwable $e) {
+			return [];
+		}
+
+		return $directories;
+	}
+
+	public function _getAllFilesInDir($path, $depth = null): array {
+		// 1. Kiểm tra nếu đường dẫn cha không hợp lệ
+		if (!is_dir($path)) {
+			return [];
+		}
+
+		$finder = new \Symfony\Component\Finder\Finder();
+
+		// 2. Cấu hình tìm kiếm FILE
+		$finder->files()->in($path);
+
+		// 3. Tùy chỉnh độ sâu
+		if ($depth !== null) {
+			$finder->depth($depth);
+		}
+
+		$files = [];
+
+		// 4. Lặp qua các file và thu thập tối đa thông tin
+		foreach ($finder as $file) {
+			try {
+				$absolutePath = $file->getRealPath();
+
+				// Lấy quyền truy cập dạng Octal (Ví dụ: "0644")
+				$perms          = $file->getPerms();
+				$formattedPerms = substr(sprintf('%o', $perms), -4);
+
+				$files[] = [
+					// Thông tin định danh & Đường dẫn
+					'name'              => $file->getFilename(),                 // Tên file kèm đuôi (vd: "index.php")
+					'filename_no_ext'   => $file->getFilenameWithoutExtension(), // Tên file không kèm đuôi (vd: "index")
+					'extension'         => $file->getExtension(),                 // Đuôi file (vd: "php")
+					'absolute_path'     => $absolutePath,                         // Đường dẫn tuyệt đối
+					'relative_path'     => $file->getRelativePath(),              // Thư mục cha tương đối (vd: "SubDir")
+					'relative_pathname' => $file->getRelativePathname(),          // Đường dẫn tương đối đầy đủ (vd: "SubDir/index.php")
+
+					// Thuộc tính vật lý
+					'size_bytes'        => $file->getSize(),                      // Dung lượng (Bytes)
+					'size_readable'     => $this->_formatBytes($file->getSize()), // Dung lượng dễ đọc (vd: "1.2 MB")
+					'mime_type'         => mime_content_type($absolutePath) ?: 'unknown', // Loại file (vd: "text/x-php", "image/jpeg")
+					'is_readable'       => $file->isReadable(),
+					'is_writable'       => $file->isWritable(),
+					'permissions'       => $formattedPerms,                       // Quyền hạn file (vd: "0644")
+
+					// Mốc thời gian (Timestamp)
+					'created_time'      => $file->getCTime(),                     // Thay đổi inode/Tạo (tùy OS)
+					'modified_time'     => $file->getMTime(),                     // Thay đổi nội dung gần nhất
+					'accessed_time'     => $file->getATime(),                     // Truy cập gần nhất
+
+					// Bảo mật / Kiểm tra toàn vẹn
+					'md5_hash'          => md5_file($absolutePath),               // Mã hash kiểm tra trùng lặp
+					'owner_id'          => $file->getOwner(),                     // ID User sở hữu trong Linux
+					'group_id'          => $file->getGroup(),                     // ID Group sở hữu trong Linux
+				];
+			}
+			catch (\Throwable $e) {
+				// Bỏ qua nếu file bị lỗi quyền truy cập hoặc bị xóa đột ngột trong lúc quét
+				continue;
+			}
+		}
+
+		return $files;
 	}
 
 	public function _getArrItemByKeyDots($array, $key) {
@@ -440,7 +656,7 @@ class Funcs extends BaseInstances {
 						}
 					}
 					elseif ($operator == 'contains') {
-						if (isset($item[$key]) && preg_match('/' . $value . '/iu', $item[$key])) {
+						if (isset($item[$key]) && @preg_match('/' . $value . '/iu', $item[$key])) {
 							if ($single) {
 								$result = $item;
 								break;
@@ -472,6 +688,77 @@ class Funcs extends BaseInstances {
 
 	public function _getPluginDirName() {
 		return $this->_getMainBaseName();
+	}
+
+	public function _getPluginDirNameFromPath($path): string {
+		// 1. Chuẩn hóa tất cả đường dẫn về dấu gạch xuôi '/'
+		$normalizedPath = str_replace('\\', '/', $path);
+
+		// 2. Lấy đường dẫn thư mục plugins chuẩn của WordPress và chuẩn hóa nó
+		$pluginDir = defined('WP_PLUGIN_DIR') ? str_replace('\\', '/', WP_PLUGIN_DIR) : 'wp-content/plugins';
+
+		// 3. Nếu đường dẫn file thực sự nằm trong thư mục plugins của hệ thống
+		if (str_starts_with($normalizedPath, $pluginDir)) {
+			// Cắt bỏ phần gốc: Chỉ giữ lại phần nằm sau "wp-content/plugins/"
+			$relativeToPlugins = ltrim(substr($normalizedPath, strlen($pluginDir)), '/');
+
+			// Trích xuất thư mục đầu tiên (tên plugin)
+			$parts = explode('/', $relativeToPlugins);
+			return !empty($parts[0]) ? $parts[0] : 'unknown';
+		}
+
+		// 4. Phương án dự phòng (Fallback) dùng Regex chuẩn hóa nếu hằng số WP_PLUGIN_DIR chưa được định nghĩa
+		if (preg_match('/wp-content\/plugins\/([^\/]+)/', $normalizedPath, $matches)) {
+			return $matches[1];
+		}
+
+		return 'unknown';
+	}
+
+	public function _getPluginDirPathFromPath($path): string {
+		// 1. Chuẩn hóa tất cả đường dẫn về dấu gạch xuôi '/' để xử lý chuỗi ổn định (không phân biệt OS)
+		$normalizedPath = str_replace('\\', '/', $path);
+
+		// 2. Lấy đường dẫn thư mục plugins chuẩn của WordPress và chuẩn hóa nó về dạng '/'
+		$pluginDir = defined('WP_PLUGIN_DIR') ? str_replace('\\', '/', WP_PLUGIN_DIR) : '';
+
+		// Nếu WP_PLUGIN_DIR chưa được định nghĩa (chạy CLI/Console ngoài WP), tìm vị trí wp-content/plugins trong chuỗi
+		if (empty($pluginDir)) {
+			$pos = strpos($normalizedPath, 'wp-content/plugins');
+			if ($pos !== false) {
+				$pluginDir = substr($normalizedPath, 0, $pos + 18); // 18 là độ dài của 'wp-content/plugins'
+			}
+		}
+		else {
+			$pluginDir = str_replace('\\', '/', $pluginDir);
+		}
+
+		$pluginDir  = rtrim($pluginDir, '/');
+		$resultPath = 'unknown';
+
+		// 3. Nếu xác định được thư mục plugins gốc
+		if (!empty($pluginDir) && str_starts_with($normalizedPath, $pluginDir)) {
+			// Cắt bỏ phần gốc để lấy phần tương đối sau "plugins/"
+			$relativeToPlugins = ltrim(substr($normalizedPath, strlen($pluginDir)), '/');
+
+			// Trích xuất tên thư mục plugin đầu tiên
+			$parts = explode('/', $relativeToPlugins);
+			if (!empty($parts[0])) {
+				$resultPath = $pluginDir . '/' . $parts[0];
+			}
+		}
+
+		// 4. Phương án dự phòng (Fallback) sử dụng Regex nếu các cách trên không khớp
+		if ($resultPath === 'unknown' && preg_match('/^(.*\/wp-content\/plugins\/([^\/]+))/', $normalizedPath, $matches)) {
+			$resultPath = $matches[1]; // Trả về toàn bộ đường dẫn tính đến hết tên thư mục plugin
+		}
+
+		// 5. CHUẨN HÓA ĐẦU RA: Chuyển đổi toàn bộ dấu gạch chéo theo đúng định dạng hệ điều hành hiện tại (Windows: \, Linux: /)
+		if ($resultPath !== 'unknown') {
+			return $this->_normalizePath($resultPath);
+		}
+
+		return 'unknown';
 	}
 
 	public function _getWPConfig($file = null) {
@@ -543,8 +830,13 @@ class Funcs extends BaseInstances {
 	 *
 	 */
 
-	public function _app($abstract, $parameters = []) {
-		return $this->_getApplication($abstract, $parameters);
+	public function _app($abstract = null, $parameters = []) {
+		if (!$abstract) {
+			return $this->_getApplication();
+		}
+		else {
+			return $this->_getApplication($abstract, $parameters);
+		}
 	}
 
 	public function _env($var, $addPrefix = false, $default = null) {
@@ -561,21 +853,56 @@ class Funcs extends BaseInstances {
 		return $result;
 	}
 
+	public function _auth($guard = null) {
+
+		/** @var \Illuminate\Support\Facades\Auth $auth */
+		$auth = $this->_app('auth');
+
+		if ($guard && $guard !== 'web') {
+			$auth->shouldUse($guard);
+		}
+
+		return $auth;
+	}
+
 	public function _view($viewName = null, $data = [], $mergeData = [], $instance = false) {
 		/** @var \Illuminate\View\Factory $blade */
-		$blade = $this->_getApplication('view');
+		$blade = $this->_app('view');
+
 		try {
 			if (!$viewName && $instance) {
 				return $blade ?? null;
 			}
-			if ($blade !== null) {
-				return $blade->make($viewName, $data, $mergeData);
-			}
-			return null;
+
+			return $blade?->make($viewName, $data, $mergeData);
 		}
 		catch (\Throwable $e) {
 			return '<div class="wrap"><div class="notice notice-error"><p>' . $e->getMessage() . '</p></div></div>';
 		}
+	}
+
+	public function _viewInject($views, $data) {
+		if ($data instanceof \Closure) {
+			return $this->_viewInstance()?->composer($views, $data);
+		}
+		elseif (is_array($data)) {
+			return $this->_viewInstance()?->composer($views, function(View $view) use ($data) {
+				foreach ($data as $key => $value) {
+					$view->with($key, $value);
+				}
+			});
+		}
+		else {
+			return false;
+		}
+	}
+
+	public function _viewDetect($viewName = null) {
+		return $viewName;
+	}
+
+	public function _viewInstance() {
+		return $this->_view(null, [], [], true);
 	}
 
 	public function _debug($message = '', $print = false, $varDump = false) {
@@ -610,6 +937,18 @@ class Funcs extends BaseInstances {
 
 	}
 
+	/**
+	 * @return \Fruitcake\LaravelDebugbar\LaravelDebugbar|mixed|null
+	 */
+	public function _debugBar() {
+		if ($this->_isDebugBarValid()) {
+			return $this->_app('debugbar');
+		}
+		else {
+			return null;
+		}
+	}
+
 	public function _asset($path, $secure = null) {
 		try {
 			if (!function_exists('plugin_dir_url')) {
@@ -626,8 +965,8 @@ class Funcs extends BaseInstances {
 		if (!$routeMap) return '';
 
 		// Normalize
-		if (preg_match('/\\\\/', $routeClass)) {
-			$parts = explode('\\', trim($routeClass, '\\'));
+		if (@preg_match('/\\\\/', $routeClass)) {
+			$parts      = explode('\\', trim($routeClass, '\\'));
 			$routeClass = end($parts);
 		}
 
@@ -636,27 +975,28 @@ class Funcs extends BaseInstances {
 
 		switch ($routeClass) {
 			case 'Apis':
-				$routeUrl = $map['namespace'] . '/' . $map['version'] . '/' . $map['full_path'];
+				$routeUrl = $map['namespace'] . '\/' . $map['version'] . '\/' . $map['full_path_regex'];
 				break;
 			default:
-				$routeUrl = $map['full_path'];
+				$routeUrl = $map['full_path_regex'];
 		}
 
 		// ❗ Plain version (dùng cho xây URL)
 		$finalUrl = $routeUrl;
 
 		// Xử lý param dạng param={key} và param={key?}
-		if (preg_match_all('/(\w+)=\{(\w+)(\?)?}/', $finalUrl, $m)) {
+		if (@preg_match_all('/(\w+)=\{(\w+)(\?)?}/', $finalUrl, $m)) {
 			foreach ($m[1] as $i => $paramKey) {
 				$paramName = $m[2][$i];
 				$fullTag   = $m[0][$i];
 
 				if (is_array($args) && array_key_exists($paramName, $args)) {
 					// Có value
-					$value = rawurlencode($args[$paramName]);
+					$value    = rawurlencode($args[$paramName]);
 					$finalUrl = str_replace($fullTag, $paramKey . '=' . $value, $finalUrl);
 					unset($args[$paramName]);
-				} else {
+				}
+				else {
 					// Không có value → key=
 					$finalUrl = str_replace($fullTag, $paramKey . '=', $finalUrl);
 				}
@@ -664,62 +1004,66 @@ class Funcs extends BaseInstances {
 		}
 
 		// Xử lý placeholder dạng {key} và {key?}
-		if (preg_match_all('/\{(\w+)(\?)?}/', $finalUrl, $pm)) {
+		if (@preg_match_all('/\{(\w+)(\?)?}/', $finalUrl, $pm)) {
 			foreach ($pm[1] as $i => $name) {
 				$fullTag = $pm[0][$i];
 
 				if (is_array($args) && array_key_exists($name, $args)) {
 					// Thay bằng giá trị thực
-					$value = rawurlencode($args[$name]);
+					$value    = rawurlencode($args[$name]);
 					$finalUrl = str_replace($fullTag, $value, $finalUrl);
 					unset($args[$name]);
-				} else {
+				}
+				else {
 					// Không có value → bỏ luôn placeholder
 					$finalUrl = str_replace($fullTag, '', $finalUrl);
 				}
 			}
 		}
 
-		// Xử lý non-capture group dạng (?: ... (?P<name>regex) ...)?
-		if (preg_match_all('/\(\?:([^()]*?\(\?P<([^>]+)>[^)]+\)[^()]*?)\)\?/', $finalUrl, $nm)) {
-			foreach ($nm[2] as $i => $name) {
-				$fullGroup = $nm[0][$i]; // toàn bộ (?: ... )?
-				$inner     = $nm[1][$i]; // phần bên trong
+		$parser   = new RouteRegexParser($routeUrl, $sanitize);
+		$finalUrl = $parser->build($args);
 
-				if (is_array($args) && array_key_exists($name, $args)) {
-					// Extract the regex inside (?P<name>regex)
-					if (preg_match('/\??\(\?P<' . $name . '>([^)]+)\)\??/', $inner, $im)) {
-						$value = rawurlencode($args[$name]);
-						// replace non capture block with actual inserted value
-						$replacement = str_replace($im[0], $value, $inner);
-						$replacement = ltrim($replacement, '/\\');
-						$finalUrl = str_replace($fullGroup, '/' . $replacement, $finalUrl);
-					}
-					unset($args[$name]);
-				} else {
-					// Không có tham số → xóa toàn bộ block
-					$finalUrl = str_replace($fullGroup, '', $finalUrl);
-				}
-			}
-		}
+		// Xử lý non-capture group dạng (?: ... (?P<name>regex) ...)?
+//		if (@preg_match_all('/\(\?:([^()]*?\(\?P<([^>]+)>[^)]+\)[^()]*?)\)\?/', $finalUrl, $nm)) {
+//			foreach ($nm[2] as $i => $name) {
+//				$fullGroup = $nm[0][$i]; // toàn bộ (?: ... )?
+//				$inner     = $nm[1][$i]; // phần bên trong
+//
+//				if (is_array($args) && array_key_exists($name, $args)) {
+//					// Extract the regex inside (?P<name>regex)
+//					if (@preg_match('/\??\(\?P<' . $name . '>([^)]+)\)\??/', $inner, $im)) {
+//						$value = rawurlencode($args[$name]);
+//						// replace non capture block with actual inserted value
+//						$replacement = str_replace($im[0], $value, $inner);
+//						$replacement = ltrim($replacement, '/\\');
+//						$finalUrl = str_replace($fullGroup, '/' . $replacement, $finalUrl);
+//					}
+//					unset($args[$name]);
+//				} else {
+//					// Không có tham số → xóa toàn bộ block
+//					$finalUrl = str_replace($fullGroup, '', $finalUrl);
+//				}
+//			}
+//		}
 
 		// Xử lý group PATH dạng (?P<key>regex) và (?P<key>regex)?
-		if (preg_match_all('/\??\(\?P<([^>]+)>([^)]+)\)\??/', $finalUrl, $gm)) {
-			foreach ($gm[1] as $i => $name) {
-				$fullGroup = $gm[0][$i];
-
-				if (is_array($args) && array_key_exists($name, $args)) {
-					$value = rawurlencode($args[$name]);
-				} else {
-					$value = ''; // Không có value → rỗng
-				}
-
-				// Thay group bằng value
-				$finalUrl = str_replace($fullGroup, $value, $finalUrl);
-
-				unset($args[$name]); // Đã dùng, xoá tránh append query
-			}
-		}
+//		if (@preg_match_all('/\??\(\?P<([^>]+)>([^)]+)\)\??/', $finalUrl, $gm)) {
+//			foreach ($gm[1] as $i => $name) {
+//				$fullGroup = $gm[0][$i];
+//
+//				if (is_array($args) && array_key_exists($name, $args)) {
+//					$value = rawurlencode($args[$name]);
+//				} else {
+//					$value = ''; // Không có value → rỗng
+//				}
+//
+//				// Thay group bằng value
+//				$finalUrl = str_replace($fullGroup, $value, $finalUrl);
+//
+//				unset($args[$name]); // Đã dùng, xoá tránh append query
+//			}
+//		}
 
 		// Xóa tag nhóm regex nếu còn sót.
 //		$finalUrl = preg_replace('/\((.*?)\)/', '', $finalUrl);
@@ -772,11 +1116,14 @@ class Funcs extends BaseInstances {
 	public function _trans($string, $replaces = [], $wordpress = false) {
 		try {
 			if ($wordpress || !class_exists('Illuminate\Translation\Translator')) {
+				foreach (($replaces ?? []) as $find => $replace) {
+					$string = str_replace($find, $replace, $string);
+				}
 				return __($string, $this->_getTextDomain());
 			}
 			else {
 				/** @var \Illuminate\Translation\Translator $translation */
-				$translation = $this->_getApplication('translator');
+				$translation = $this->_app('translator');
 				return $translation->has($string) ? $translation->get($string, $replaces) : $translation->get($string, $replaces, $this->_config('app.fallback_locale'));
 			}
 		}
@@ -787,7 +1134,7 @@ class Funcs extends BaseInstances {
 
 	public function _config($key = null, $default = null) {
 		try {
-			$config = $this->_getApplication('config');
+			$config = $this->_app('config');
 			return $config->get($key);
 		}
 		catch (\Throwable $e) {
@@ -825,28 +1172,11 @@ class Funcs extends BaseInstances {
 		];
 	}
 
-	public function _viewInject($views, $data) {
-		if ($data instanceof \Closure) {
-			return $this->_viewInstance()?->composer($views, $data);
-		}
-		elseif (is_array($data)) {
-			return $this->_viewInstance()?->composer($views, function(View $view) use ($data) {
-				foreach ($data as $key => $value) {
-					$view->with($key, $value);
-				}
-			});
-		}
-		else {
-			return false;
-		}
-	}
-
-	public function _viewDetect($viewName = null) {
-		return $viewName;
-	}
-
-	public function _viewInstance() {
-		return $this->_view(null, [], [], true);
+	public function _event(...$args) {
+		/** @var \Illuminate\Events\Dispatcher $dispatcher */
+		$dispatcher = $this->_app('events')->dispatcher();
+		$dispatcher->dispatch($args);
+		return $dispatcher;
 	}
 
 	/*
@@ -860,6 +1190,23 @@ class Funcs extends BaseInstances {
 
 	public function _isDebug() {
 		return $this->_env('APP_DEBUG', true) == 'true';
+	}
+
+	public function _isDebugBarValid() {
+		if (
+			(!is_null($this->_app()) && method_exists($this->_app(), 'runningInConsole') ? !$this->_app()->runningInConsole() : (php_sapi_name() === 'cli'))
+			&& $this->_env($this->_getPrefixEnv('APP_DEBUG_MONITOR')) === true
+			&& class_exists('\Fruitcake\LaravelDebugbar\LaravelDebugbar')
+			&& !wp_doing_ajax()
+			&& !wp_doing_cron()
+			&& !wp_is_serving_rest_request()
+			&& !defined('REST_REQUEST')
+		) {
+			return true;
+		}
+		else {
+			return false;
+		}
 	}
 
 	public function _isWPDebug() {
@@ -923,7 +1270,7 @@ class Funcs extends BaseInstances {
 
 	public function _vendorFolderExists($package = null) {
 		$vendorPath = $this->_getMainPath('/vendor');
-		$package = trim($package, '/\\');
+		$package    = trim($package, '/\\');
 		return $this->_folderExists($vendorPath . '/' . $package);
 	}
 
@@ -1018,7 +1365,7 @@ class Funcs extends BaseInstances {
 		return in_array(true, $ruleResults, true);
 	}
 
-	public function _onlyHasQueryParams($queryString = null, $allowedParams = null) {
+	public function _isOnlyHasQueryParams($queryString = null, $allowedParams = null) {
 		if (!$queryString || !$allowedParams) {
 			return false;
 		}
@@ -1082,6 +1429,24 @@ class Funcs extends BaseInstances {
 		return true;
 	}
 
+	public function _isWPInternalRequest(?Request $request = null): bool {
+		if (
+			(defined('DOING_CRON') && DOING_CRON)
+			|| (defined('WP_CLI') && WP_CLI)
+			|| php_sapi_name() === 'cli'
+		) {
+			return true;
+		}
+
+		$userAgent = $request ? $request->userAgent() : ($this->request?->userAgent() ?? null);
+
+		if ($userAgent && @preg_match('#^WordPress/#i', $userAgent)) {
+			return true;
+		}
+
+		return false;
+	}
+
 	/*
 	 *
 	 */
@@ -1097,17 +1462,15 @@ class Funcs extends BaseInstances {
 
 	public function _slugParams($params = [], $separator = '_') {
 		// Lấy toàn bộ query string từ URL
-		$request = $this->request ?? $this->_getApplication('request');
+		$request     = $this->request ?? $this->_app('request');
 		$queryParams = $request->query->all();
 
 		$selectedParts = [];
 
 		// Chỉ lấy những params được khai báo
 		foreach ($params as $key) {
-			if (isset($queryParams[$key])) {
-				// Ghép key và value để phân biệt
-				$selectedParts[] = $key . '=' . $queryParams[$key];
-			}
+			// Ghép key và value để phân biệt
+			$selectedParts[] = $key . '=' . ($queryParams[$key] ?? null);
 		}
 
 		// Ghép các phần lại thành một chuỗi
@@ -1166,11 +1529,22 @@ class Funcs extends BaseInstances {
 		return $pattern;
 	}
 
+	public function _formatBytes(int $bytes, int $precision = 2): string {
+		$units = ['B', 'KB', 'MB', 'GB', 'TB'];
+		$bytes = max($bytes, 0);
+		$pow   = floor(($bytes ? log($bytes) : 0) / log(1024));
+		$pow   = min($pow, count($units) - 1);
+
+		$bytes /= pow(1024, $pow);
+
+		return round($bytes, $precision) . ' ' . $units[$pow];
+	}
+
 	public function _pregQuoteKeepGroups($pattern, $delimiter = '/') {
 		// 1. Tách toàn bộ group
-		$groups = [];
+		$groups      = [];
 		$placeholder = '___REGEX_GROUP_%d___';
-		$i = 0;
+		$i           = 0;
 
 		// Match đúng mọi group kể cả lồng nhau
 		$patternWithPlaceholders = preg_replace_callback(
@@ -1256,6 +1630,10 @@ class Funcs extends BaseInstances {
 		return $this->_sanitizeURL($url);
 	}
 
+	public function _normalizePath($path) {
+		return str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+	}
+
 	public function _commentTokens() {
 		$commentTokens = [T_COMMENT];
 
@@ -1286,7 +1664,7 @@ class Funcs extends BaseInstances {
 
 	public function _numberFormat($value, $precision = 0, $endWithZeros = true, $locale = 'vi', $currencyCode = 'vnd', $style = NumberFormatter::DECIMAL, $groupingUsed = true) {
 		try {
-			if (!$value) return null;
+			if (!$value) return $value;
 			$formatter = new NumberFormatter($locale, $style);
 			$formatter->setAttribute(NumberFormatter::FRACTION_DIGITS, $precision);
 			$formatter->setAttribute(NumberFormatter::GROUPING_USED, $groupingUsed);
@@ -1307,13 +1685,13 @@ class Funcs extends BaseInstances {
 		}
 
 		// Convert to string if not already
-		$value = (string) $value;
+		$value = (string)$value;
 
 		// Remove all whitespace (including non-breaking spaces used in some locales)
 		$value = preg_replace('/\s+/u', '', $value);
 
 		// Determine separators based on locale
-		$formatter = new NumberFormatter($locale, NumberFormatter::DECIMAL);
+		$formatter   = new NumberFormatter($locale, NumberFormatter::DECIMAL);
 		$decimalSep  = $formatter->getSymbol(NumberFormatter::DECIMAL_SEPARATOR_SYMBOL);
 		$groupingSep = $formatter->getSymbol(NumberFormatter::GROUPING_SEPARATOR_SYMBOL);
 
@@ -1326,10 +1704,10 @@ class Funcs extends BaseInstances {
 
 		// Cast to appropriate type
 		if (str_contains($value, '.')) {
-			return (float) $value;
+			return (float)$value;
 		}
 
-		return (int) $value;
+		return (int)$value;
 	}
 
 	public function _normalizeDateTime($value) {
@@ -1416,6 +1794,16 @@ class Funcs extends BaseInstances {
 		return $results;
 	}
 
+	public function _parseDepthString($depth): ?int {
+		if (is_numeric($depth)) {
+			return (int)$depth;
+		}
+		if (preg_match('/(?:==|<|<=|>|>=)?\s*(\d+)/', (string)$depth, $matches)) {
+			return (int)$matches[1];
+		}
+		return null;
+	}
+
 	/*
 	 *
 	 */
@@ -1423,7 +1811,7 @@ class Funcs extends BaseInstances {
 	public static function __callStatic($method, $parameters) {
 		$method = '_' . $method;
 
-		if (!method_exists(static::instance(), $method)) {
+		if (!method_exists(static::class, $method)) {
 			throw new \BadMethodCallException(
 				sprintf(
 					'Call to undefined method %s::%s',

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\WPRoles;
+namespace WPSPCORELITE\App\Routes\WPRoles;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method $this wp_role(string $role, callable|array $callback, array $args = [])
@@ -19,10 +19,12 @@ class WPRoles extends BaseRoute {
 		$request     = $this->request;
 		$requestPath = ltrim($request->getRequestUri(), '/\\');
 
-		$path        = $route->path;
-		$fullPath    = $route->fullPath;
-		$callback    = $route->callback;
-		$middlewares = $route->middlewares;
+		$path          = $route->path;
+		$pathRegex     = $route->pathRegex;
+		$fullPath      = $route->fullPath;
+		$fullPathRegex = $route->fullPathRegex;
+		$callback      = $route->callback;
+		$middlewares   = $route->middlewares;
 
 		$passedMiddlewares = $this->isPassedMiddleware($middlewares, $request, ['route' => $route]);
 		if ($passedMiddlewares) {
@@ -32,7 +34,9 @@ class WPRoles extends BaseRoute {
 				$this->prefixEnv,
 				[
 					'path'              => $path,
+					'path_regex'        => $pathRegex,
 					'full_path'         => $fullPath,
+					'full_path_regex'   => $fullPathRegex,
 					'callback_function' => $callback[1] ?? null,
 				],
 			];

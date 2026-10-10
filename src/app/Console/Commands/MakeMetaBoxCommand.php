@@ -1,11 +1,11 @@
 <?php
 
-namespace WPSPCORE\App\Console\Commands;
+namespace WPSPCORELITE\App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
+use WPSPCORELITE\App\Console\Command;
+use WPSPCORELITE\App\File\File;
 use Illuminate\Support\Str;
-use WPSPCORE\App\Console\Traits\CommandsTrait;
+use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeMetaBoxCommand extends Command {
 
@@ -53,14 +53,14 @@ class MakeMetaBoxCommand extends Command {
 		$this->validateSlug($id, 'id');
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className  = Str::slug($id, '_');
+		$className  = preg_replace('/[^A-Za-z0-9_]/', '_', $id);
 		$createView = $createView ?? $this->option('view') ?: false;
 
 		// Kiểm tra tồn tại.
-		$componentPath = $mainPath . '/app/WordPress/MetaBoxes/' . $className . '.php';
-		$viewPath      = $mainPath . '/resources/views/meta-boxes/' . $id . '.blade.php';
+		$classPath = $mainPath . '/app/WordPress/MetaBoxes/' . $className . '.php';
+		$viewPath  = $mainPath . '/resources/views/meta-boxes/' . $id . '.blade.php';
 
-		if (File::exists($componentPath)) {
+		if (File::exists($classPath)) {
 			$this->error('Meta box: "' . $id . '" already exists! Please try again.');
 			exit;
 		}
@@ -82,21 +82,21 @@ class MakeMetaBoxCommand extends Command {
 
 			File::put($viewPath, $view);
 
-			$content = File::get(__DIR__ . '/../Stubs/MetaBoxes/meta-box-view.stub');
+			$stub = File::get(__DIR__ . '/../Stubs/MetaBoxes/meta-box-view.stub');
 		}
 		else {
-			$content = File::get(__DIR__ . '/../Stubs/MetaBoxes/meta-box.stub');
+			$stub = File::get(__DIR__ . '/../Stubs/MetaBoxes/meta-box.stub');
 		}
 
-		$content = str_replace(
+		$stub = str_replace(
 			['{{ id }}', '{{ class_name }}'],
 			[$id, $className],
-			$content
+			$stub
 		);
-		$content = $this->replaceNamespaces($content);
+		$stub = $this->replaceNamespaces($stub);
 
-		File::ensureDirectoryExists(dirname($componentPath));
-		File::put($componentPath, $content);
+		File::ensureDirectoryExists(dirname($classPath));
+		File::put($classPath, $stub);
 
 		/**
 		 * ---

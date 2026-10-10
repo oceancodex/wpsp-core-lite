@@ -1,17 +1,20 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\AdminPages;
+namespace WPSPCORELITE\App\WordPress\AdminPages;
 
 trait AdminPageTrait {
 
 	public $page_title_override = null;
 
 	/**
-	 * Ghi đè page_title.
+	 * Ghi đè page_title bằng cách sử dụng filter "admin_title".
 	 */
 	public function overridePageTitle($overrideTitle = null) {
-		$overrideTitle = $overrideTitle ?? $this->page_title_override ?? $this->page_title;
+		$overrideTitle = $overrideTitle ?? $this->page_title_override ?? $this->page_title ?? $this->menu_title ?? $this->menu_slug;
 		if ($overrideTitle) {
+			global $title;
+			$title = $overrideTitle; // Fix lỗi \wp-admin\admin-header.php:41 => strip_tags(): Passing null to parameter #1 ($string) of type string is deprecated
+
 			add_filter('admin_title', function($admin_title, $title) use ($overrideTitle) {
 				return $overrideTitle;
 			}, 9999999999, 2);
@@ -61,7 +64,10 @@ trait AdminPageTrait {
 				add_action('admin_menu', function() use ($additionalClasses) {
 					global $submenu;
 
-					if (!isset($submenu[$this->parent_slug])) {
+					if (
+						!isset($submenu[$this->parent_slug])
+						|| empty($submenu[$this->parent_slug])
+					) {
 						return;
 					}
 
@@ -94,19 +100,26 @@ trait AdminPageTrait {
 			add_action('admin_menu', function() {
 				global $submenu;
 
-				if (!isset($submenu[$this->menu_slug]) && !isset($submenu[$this->forceInitSlug])) {
+				if (
+					!isset($submenu[$this->menu_slug]) && !isset($submenu[$this->forceInitSlug])
+					|| empty($submenu[$this->menu_slug]) && empty($submenu[$this->forceInitSlug])
+				) {
 					return;
 				}
 
-				foreach ($submenu[$this->forceInitSlug] as $index => &$item) {
-					if ($item[2] === $this->forceInitSlug) {
-						$item[4] = $this->prepareAdminMenuClasses($item[4] ?? '', $this->firstSubmenuClasses);
+				if (isset($submenu[$this->forceInitSlug])) {
+					foreach ($submenu[$this->forceInitSlug] as $index => &$item) {
+						if ($item[2] === $this->forceInitSlug) {
+							$item[4] = $this->prepareAdminMenuClasses($item[4] ?? '', $this->firstSubmenuClasses);
+						}
 					}
 				}
 
-				foreach ($submenu[$this->menu_slug] as $index => &$item) {
-					if ($item[2] === $this->menu_slug) {
-						$item[4] = $this->prepareAdminMenuClasses($item[4] ?? '', $this->firstSubmenuClasses);
+				if (isset($submenu[$this->menu_slug])) {
+					foreach ($submenu[$this->menu_slug] as $index => &$item) {
+						if ($item[2] === $this->menu_slug) {
+							$item[4] = $this->prepareAdminMenuClasses($item[4] ?? '', $this->firstSubmenuClasses);
+						}
 					}
 				}
 			}, 9999999999);

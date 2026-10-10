@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\ThemeTemplates;
+namespace WPSPCORELITE\App\Routes\ThemeTemplates;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait ThemeTemplatesRouteTrait {
 

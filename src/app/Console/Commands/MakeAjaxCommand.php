@@ -1,11 +1,11 @@
 <?php
 
-namespace WPSPCORE\App\Console\Commands;
+namespace WPSPCORELITE\App\Console\Commands;
 
-use Illuminate\Console\Command;
+use WPSPCORELITE\App\Console\Command;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\File;
-use WPSPCORE\App\Console\Traits\CommandsTrait;
+use WPSPCORELITE\App\File\File;
+use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeAjaxCommand extends Command {
 
@@ -47,7 +47,7 @@ class MakeAjaxCommand extends Command {
 		$this->validateSlug($action, 'action');
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className = Str::slug($action, '_');
+		$className = preg_replace('/[^A-Za-z0-9_]/', '_', $action);
 		$method    = strtolower($method ?? $this->option('method') ?: 'GET');
 		$nopriv    = $nopriv ?? $this->option('nopriv') ?: false;
 

@@ -1,11 +1,11 @@
 <?php
 
-namespace WPSPCORE\App\Console\Commands;
+namespace WPSPCORELITE\App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
+use WPSPCORELITE\App\Console\Command;
+use WPSPCORELITE\App\File\File;
 use Illuminate\Support\Str;
-use WPSPCORE\App\Console\Traits\CommandsTrait;
+use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeRewriteFrontPageCommand extends Command {
 
@@ -59,7 +59,7 @@ class MakeRewriteFrontPageCommand extends Command {
 		$this->validateSlug($path, 'path');
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className           = Str::slug($path, '_');
+		$className           = preg_replace('/[^A-Za-z0-9_]/', '_', $path);
 		$method              = strtolower($method ?? $this->option('method') ?: 'GET');
 		$rewritePagePostType = $rewritePagePostType ?? $this->option('post-type') ?: 'page';
 		$rewritePageSlug     = $rewritePageSlug ?? $this->option('page-slug') ?: 'rewrite-front-pages';
@@ -79,7 +79,7 @@ class MakeRewriteFrontPageCommand extends Command {
 		 * Class.
 		 * ---
 		 */
-		$content = File::get(__DIR__ . '/../Stubs/RewriteFrontPages/rewritefrontpage' . ($useTemplate ? '-template' : '') . '.stub');
+		$content = File::get(__DIR__ . '/../Stubs/RewriteFrontPages/rewrite-front-page' . ($useTemplate ? '-template' : '') . '.stub');
 		$content = str_replace(
 			['{{ class_name }}', '{{ path }}', '{{ method }}', '{{ post_type }}', '{{ page_slug }}', '{{ use_template }}'],
 			[$className, $path, $method, $rewritePagePostType, $rewritePageSlug, $useTemplate ? 'true' : 'false'],
@@ -97,8 +97,8 @@ class MakeRewriteFrontPageCommand extends Command {
 		 * ---
 		 */
 		$viewStubPath = $useTemplate
-			? __DIR__ . '/../Views/RewriteFrontPages/rewritefrontpage.view'
-			: __DIR__ . '/../Views/RewriteFrontPages/rewritefrontpage-no-template.view';
+			? __DIR__ . '/../Views/RewriteFrontPages/rewrite-front-page.view'
+			: __DIR__ . '/../Views/RewriteFrontPages/rewrite-front-page-no-template.view';
 
 		$view = File::get($viewStubPath);
 		$view = str_replace(
@@ -115,7 +115,7 @@ class MakeRewriteFrontPageCommand extends Command {
 		 * Function.
 		 * ---
 		 */
-		$func = File::get(__DIR__ . '/../Funcs/RewriteFrontPages/rewritefrontpage.func');
+		$func = File::get(__DIR__ . '/../Funcs/RewriteFrontPages/rewrite-front-page.func');
 		$func = str_replace(
 			['{{ class_name }}', '{{ path }}', '{{ method }}', '{{ post_type }}', '{{ page_slug }}', '{{ use_template }}'],
 			[$className, $path, $method, $rewritePagePostType, $rewritePageSlug, $useTemplate ? 'true' : 'false'],
@@ -127,7 +127,7 @@ class MakeRewriteFrontPageCommand extends Command {
 		 * Use.
 		 * ---
 		 */
-		$use = File::get(__DIR__ . '/../Uses/RewriteFrontPages/rewritefrontpage.use');
+		$use = File::get(__DIR__ . '/../Uses/RewriteFrontPages/rewrite-front-page.use');
 		$use = str_replace(
 			['{{ class_name }}', '{{ path }}', '{{ method }}', '{{ post_type }}', '{{ page_slug }}', '{{ use_template }}'],
 			[$className, $path, $method, $rewritePagePostType, $rewritePageSlug, $useTemplate ? 'true' : 'false'],

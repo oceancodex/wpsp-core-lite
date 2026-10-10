@@ -1,10 +1,10 @@
 <?php
 
-namespace WPSPCORE\App\Console\Commands;
+namespace WPSPCORELITE\App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use WPSPCORE\App\Console\Traits\CommandsTrait;
+use WPSPCORELITE\App\Console\Command;
+use WPSPCORELITE\App\File\File;
+use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeActionCommand extends Command {
 
@@ -42,7 +42,7 @@ class MakeActionCommand extends Command {
 		}
 
 		// Kiểm tra chuỗi hợp lệ.
-		$this->validateSlug($action, 'action');
+		$this->validatePath($action, 'action');
 
 		/**
 		 * ---

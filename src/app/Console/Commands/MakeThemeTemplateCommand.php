@@ -1,11 +1,11 @@
 <?php
 
-namespace WPSPCORE\App\Console\Commands;
+namespace WPSPCORELITE\App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
+use WPSPCORELITE\App\Console\Command;
+use WPSPCORELITE\App\File\File;
 use Illuminate\Support\Str;
-use WPSPCORE\App\Console\Traits\CommandsTrait;
+use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeThemeTemplateCommand extends Command {
 
@@ -52,7 +52,7 @@ class MakeThemeTemplateCommand extends Command {
 		$this->validateSlug($name);
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className = Str::slug($name, '_');
+		$className = preg_replace('/[^A-Za-z0-9_]/', '_', $name);
 		$postType  = $postType ?? $this->option('post-type') ?: 'page';
 
 		// Kiểm tra tồn tại.
@@ -69,16 +69,16 @@ class MakeThemeTemplateCommand extends Command {
 		 * Class.
 		 * ---
 		 */
-		$content = File::get(__DIR__ . '/../Stubs/ThemeTemplates/theme-template.stub');
-		$content = str_replace(
+		$stub = File::get(__DIR__ . '/../Stubs/ThemeTemplates/theme-template.stub');
+		$stub = str_replace(
 			['{{ class_name }}', '{{ name }}', '{{ post_type }}'],
 			[$className, $name, $postType],
-			$content
+			$stub
 		);
-		$content = $this->replaceNamespaces($content);
+		$stub = $this->replaceNamespaces($stub);
 
 		File::ensureDirectoryExists(dirname($classPath));
-		File::put($classPath, $content);
+		File::put($classPath, $stub);
 
 		/**
 		 * ---

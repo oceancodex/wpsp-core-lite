@@ -1,17 +1,12 @@
 {
 	"name": "oceancodex/wpsp-core-lite",
-	"version": "13.1.10",
+	"version": "13.1.62",
 	"description": "WPSP Framework - WordPress Starter Plugin - Core - Lite",
 	"keywords": [
 	],
 	"license": "GPL-2.0-or-later",
 	"require": {
 		"php": "^8.3",
-		"illuminate/container": "^v13.16",
-		"illuminate/http": "^v13.16",
-		"illuminate/console": "^v13.16",
-		"illuminate/config": "^v13.16",
-		"vlucas/phpdotenv": "^v5.6",
 		"yahnis-elsts/plugin-update-checker": "^v5.6"
 	},
 	"config": {
@@ -19,8 +14,8 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"WPSPCORE\\": "src/",
-			"WPSPCORE\\App\\": "src/app/"
+			"WPSPCORELITE\\": "src/",
+			"WPSPCORELITE\\App\\": "src/app/"
 		},
 		"files": [
 		]

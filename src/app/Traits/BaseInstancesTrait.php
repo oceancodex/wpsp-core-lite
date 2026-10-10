@@ -1,16 +1,17 @@
 <?php
 
-namespace WPSPCORE\App\Traits;
+namespace WPSPCORELITE\App\Traits;
 
-use Illuminate\Http\Request;
-use WPSPCORE\App\Routes\RouteTrait;
+use WPSPCORELITE\App\Routes\RouteTrait;
+use WPSPCORELITE\App\Http\Request as WPSPCORE_Request;
 
 /**
  * BaseInstancesTrait.
  *
- * @property \WPSPCORE\Funcs          $funcs
+ * @property \WPSPCORELITE\Funcs          $funcs
  * @property \Illuminate\Http\Request $request
  * @method $this __wpspConstruct
+ * @method $this __instanceConstruct
  * @method $this customProperties
  * @method $this afterCustomProperties
  * @method $this afterInstanceConstruct
@@ -19,24 +20,38 @@ trait BaseInstancesTrait {
 
 	use RouteTrait;
 
-	public $funcs         = null;
 	public $mainPath      = null;
 	public $rootNamespace = null;
 	public $prefixEnv     = null;
 	public $extraParams   = [];
-	public $request       = null;
+
+	public $appMode = null;
+	public $funcs   = null;
+
+	/** @var \Illuminate\Http\Request | \WPSPCORELITE\App\Widen\Commons\Http\Request */
+	public $request = null;
 
 	public function baseInstanceConstruct($mainPath = null, $rootNamespace = null, $prefixEnv = null, $extraParams = []) {
 		$this->beforeInstanceConstruct();
 		$this->beforeConstruct();
-		if ($mainPath)      $this->mainPath      = $mainPath;
+
+		if ($mainPath) $this->mainPath = $mainPath;
 		if ($rootNamespace) $this->rootNamespace = $rootNamespace;
-		if ($prefixEnv)     $this->prefixEnv     = $prefixEnv;
-		if ($extraParams)   $this->extraParams   = $extraParams;
+		if ($prefixEnv) $this->prefixEnv = $prefixEnv;
+
+		if ($extraParams) {
+			$this->extraParams = $extraParams;
+
+			if (isset($this->extraParams['app_mode'])) {
+				$this->appMode = $this->extraParams['app_mode'];
+			}
+		}
+
 		$this->prepareFuncs();
 		$this->prepareRequest();
 		$this->afterConstruct();
-		$this->baseInstanceCall('__wpspConstruct');
+		$this->baseInstanceCall('__wpspConstruct'); // Mọi params sẽ tự động tạo thành properties cho class.
+		$this->baseInstanceCall('__instanceConstruct');
 		$this->baseInstanceCall('customProperties');
 		$this->baseInstanceCall('afterCustomProperties');
 		$this->baseInstanceCall('afterInstanceConstruct');
@@ -48,12 +63,18 @@ trait BaseInstancesTrait {
 	 */
 
 	public function baseInstanceCall($method) {
-		if ($this->funcs && $this->request) {
+		if (($this->funcs && $this->request) || is_subclass_of($this, \WP_List_Table::class)) {
+			if (!method_exists($this, $method)) {
+				return null;
+			}
+
 			$path        = $this->extraParams['path'] ?? '';
 			$fullPath    = $this->extraParams['full_path'] ?? '';
 			$requestPath = ltrim($this->request->getRequestUri(), '/\\');
+
 			return $this->autoResolveAndCall($path, $fullPath, $requestPath, $this, $method);
 		}
+
 		return null;
 	}
 
@@ -62,9 +83,11 @@ trait BaseInstancesTrait {
 	 */
 
 	public function prepareFuncs() {
-		if (isset($this->extraParams['funcs']) && $this->extraParams['funcs'] && !$this->funcs) {
+		if ($this->funcs) return;
+
+		if (isset($this->extraParams['funcs']) && $this->extraParams['funcs']) {
 			if (is_bool($this->extraParams['funcs'])) {
-				$this->funcs = new \WPSPCORE\Funcs(
+				$this->funcs = new \WPSPCORELITE\Funcs(
 					$this->mainPath,
 					$this->rootNamespace,
 					$this->prefixEnv,
@@ -75,22 +98,63 @@ trait BaseInstancesTrait {
 				$this->funcs = $this->extraParams['funcs'];
 			}
 		}
+
 		unset($this->extraParams['funcs']);
 	}
 
 	public function prepareRequest() {
-		if (isset($this->funcs) && $funcs = $this->funcs) {
+		if ($this->request) return;
+
+		$lite = $this->isLiteMode();
+
+		if ($this->funcs) {
+			$funcs = $this->funcs;
+
 			if (isset($funcs::$request) && $funcs::$request) {
 				$this->request = $funcs::$request;
 			}
 			else {
-				$this->request = $this->funcs->_getApplication('request');
+				$this->request = $funcs->_getApplication('request');
+
+				if (!$this->request) {
+					$this->request = $lite
+						? WPSPCORE_Request::capture()
+						: $funcs->_getRequestClass()::capture();
+				}
 			}
 		}
 		else {
-			$this->request = Request::capture();
+			$this->request = $lite
+				? WPSPCORE_Request::capture()
+				: IlluminateRequest::capture();
+
+			if (!$lite) {
+				$this->request->setUserResolver(function() {
+					$app = $this->funcs?->_getApplication();
+					if (!$app || !$app->bound('session.store')) return null;
+
+					$store = $app->make('session.store');
+					if (!$store->isStarted()) return null;
+
+					return $this->funcs->_auth()?->user();
+				});
+			}
 		}
+
 		unset($this->extraParams['request']);
+	}
+
+	/**
+	 * Mode phải do plugin khai báo tường minh qua extraParams['app_mode'].
+	 * Chỉ fallback sang class_exists khi không có, vì class_exists bị
+	 * "rò" giữa các plugin trong cùng một request.
+	 */
+	protected function isLiteMode(): bool {
+		if ($this->appMode !== null && $this->appMode !== 'full') {
+			return $this->appMode === 'lite';
+		}
+
+		return !class_exists(IlluminateRequest::class);
 	}
 
 	/*
@@ -109,16 +173,16 @@ trait BaseInstancesTrait {
 
 	public function wpspCall($method, $class = null, $args = []) {
 //		if ($this->funcs && $this->request) {
-			$path        = $this->extraParams['path'] ?? null;
-			$fullPath    = $this->extraParams['full_path'] ?? null;
-			$requestPath = ltrim($this->request?->getRequestUri() ?? null, '/\\');
+		$path        = $this->extraParams['path'] ?? null;
+		$fullPath    = $this->extraParams['full_path'] ?? null;
+		$requestPath = ltrim($this->request?->getRequestUri() ?? null, '/\\');
 
-			if ($class) {
-				return $this->autoResolveAndCall($path, $fullPath, $requestPath, $class, $method, $args);
-			}
-			else {
-				return $this->autoResolveAndCall($path, $fullPath, $requestPath, $this, $method, $args);
-			}
+		if ($class) {
+			return $this->autoResolveAndCall($path, $fullPath, $requestPath, $class, $method, $args);
+		}
+		else {
+			return $this->autoResolveAndCall($path, $fullPath, $requestPath, $this, $method, $args);
+		}
 //		}
 
 //		return null;

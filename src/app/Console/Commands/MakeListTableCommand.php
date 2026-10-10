@@ -1,11 +1,11 @@
 <?php
 
-namespace WPSPCORE\App\Console\Commands;
+namespace WPSPCORELITE\App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
+use WPSPCORELITE\App\Console\Command;
+use WPSPCORELITE\App\File\File;
 use Illuminate\Support\Str;
-use WPSPCORE\App\Console\Traits\CommandsTrait;
+use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeListTableCommand extends Command {
 
@@ -49,12 +49,12 @@ class MakeListTableCommand extends Command {
 		$this->validateSlug($name);
 
 		// Chuẩn bị thêm các biến để sử dụng.
-		$className = Str::slug($name, '_');
+		$className = preg_replace('/[^A-Za-z0-9_]/', '_', $name);
 
 		// Kiểm tra tồn tại.
-		$path = $mainPath . '/app/WordPress/ListTables/' . $className . '.php';
+		$classPath = $mainPath . '/app/WordPress/ListTables/' . $className . '.php';
 
-		if (File::exists($path)) {
+		if (File::exists($classPath)) {
 			$this->error('List table: "' . $name . '" already exists! Please try again.');
 			exit;
 		}
@@ -64,16 +64,16 @@ class MakeListTableCommand extends Command {
 		 * Class.
 		 * ---
 		 */
-		$content = File::get(__DIR__ . '/../Stubs/ListTables/listtable.stub');
-		$content = str_replace(
+		$stub = File::get(__DIR__ . '/../Stubs/ListTables/list-table.stub');
+		$stub = str_replace(
 			['{{ class_name }}', '{{ name }}'],
 			[$className, $name],
-			$content
+			$stub
 		);
-		$content = $this->replaceNamespaces($content);
+		$stub = $this->replaceNamespaces($stub);
 
-		File::ensureDirectoryExists(dirname($path));
-		File::put($path, $content);
+		File::ensureDirectoryExists(dirname($classPath));
+		File::put($classPath, $stub);
 
 		// Done.
 		$this->info('Created new list table: "' . $name . '"');

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\FrontPages;
+namespace WPSPCORELITE\App\WordPress\FrontPages;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseFrontPage extends BaseInstances {
 
@@ -66,7 +66,7 @@ abstract class BaseFrontPage extends BaseInstances {
 		$regexPath   = !str_ends_with($regexPath, $regexSuffix) ? $regexPath . $regexSuffix : $regexPath;
 
 		$fullPathEx = !str_starts_with($fullPath, $regexPrefix) ? $regexPrefix . $fullPath : $fullPath;
-		$fullPathEx = !str_ends_with($fullPathEx, $regexSuffix) ? $regexPath . $fullPathEx : $fullPathEx;
+		$fullPathEx = !str_ends_with($fullPathEx, $regexSuffix) ? $fullPathEx . $regexSuffix : $fullPathEx;
 
 		if ($path && $fullPath) {
 			$requestPath = ltrim($this->request->getRequestUri(), '/\\');
@@ -76,9 +76,9 @@ abstract class BaseFrontPage extends BaseInstances {
 				// Cần phải hook vào 'wp' để có thể truy cập được global $post.
 				add_action('wp', function() use ($path, $fullPath, $regexPath, $fullPathEx, $requestPath) {
 					try {
-						$matched = preg_match('/' . $regexPath . '/iu', $requestPath, $matches);
+						$matched = @preg_match('/' . $regexPath . '/iu', $requestPath, $matches);
 						if (!$matched) {
-							$matched = preg_match('/' . $fullPathEx . '/iu', $requestPath, $matches);
+							$matched = @preg_match('/' . $fullPathEx . '/iu', $requestPath, $matches);
 						}
 					}
 					catch (\Throwable $e) {
