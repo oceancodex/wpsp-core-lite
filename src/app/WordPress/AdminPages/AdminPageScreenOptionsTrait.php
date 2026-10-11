@@ -40,7 +40,7 @@ trait AdminPageScreenOptionsTrait {
 
 			// Chuẩn hóa "itemsPerPageKey".
 			if (!$this->itemsPerPageKey) {
-				$this->itemsPerPageKey = $this->screenId ?? $this->funcs?->_getAppShortName() ?? 'wpsp';
+				$this->itemsPerPageKey = $this->screenId ?? $this->funcs?->_getAppShortName() ?? 'wpsp_lite';
 				$this->itemsPerPageKey .= '_items_per_page';
 			}
 

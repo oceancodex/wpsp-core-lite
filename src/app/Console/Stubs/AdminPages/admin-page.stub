@@ -105,7 +105,7 @@ class {{ class_name }} extends BaseAdminPage {
 
 		/**
 		 * Định nghĩa screen option key duy nhất dựa theo params trong URL.\
-		 * Ví dụ: page=wpsp&tab=list => wpsp_page_wpsp_tab_list\
+		 * Ví dụ: page=wpsp_lite&tab=list => wpsp_page_wpsp_tab_list\
 		 * Như vậy thì screen options sẽ độc lập giữa các page.
 		 */
 //		$this->screenId = $this->funcs->_slugParams(['page', 'tab']);

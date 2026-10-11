@@ -182,7 +182,7 @@ abstract class BaseAdminPage extends BaseInstances {
 
 			/**
 			 * Action "load-{admin_page}" chỉ hoạt động với admin menu page được register với slug chuẩn WordPress. Ví dụ: "edit.php", "post-new.php", hoặc "my_custom_page".\
-			 * Với các dạng slug khác như: "wpsp&tab=tab-1", action này không hoạt động.
+			 * Với các dạng slug khác như: "wpsp_lite&tab=tab-1", action này không hoạt động.
 			 */
 			add_action('load-' . $adminPage, function() use ($adminPage) {
 				if (method_exists($this, 'beforeInLoadAdminPage')) {
