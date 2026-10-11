@@ -256,7 +256,7 @@ class Funcs extends BaseInstances {
 	}
 
 	public function _getAppShortName() {
-		return $this->_env('APP_SHORT_NAME', true);
+		return $this->_env('APP_SHORT_NAME', true) ?: $this->_config('app.short_name');
 	}
 
 	public function _getMainBaseName() {
@@ -1480,7 +1480,7 @@ class Funcs extends BaseInstances {
 		$slug = preg_replace('/[^0-9a-zA-Z]/iu', $separator, $slug);
 
 		// Thêm tiền tố app name (nếu có)
-		$prefix = $this->_env('APP_SHORT_NAME', true);
+		$prefix = $this->_getAppShortName();
 		if ($prefix) {
 			$slug = $prefix . $separator . $slug;
 		}
