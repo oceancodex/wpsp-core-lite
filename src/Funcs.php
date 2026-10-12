@@ -383,10 +383,10 @@ class Funcs extends BaseInstances {
 	public function _getDBTablePrefix($withWpdbPrefix = true) {
 		if ($withWpdbPrefix) {
 			global $wpdb;
-			return ($wpdb->prefix ?? 'wp_') . $this->_env('DB_TABLE_PREFIX', true);
+			return ($wpdb->prefix ?? 'wp_') . ($this->_env('DB_TABLE_PREFIX', true) ?: $this->_config('database.table_prefix'));
 		}
 		else {
-			return $this->_env('DB_TABLE_PREFIX', true);
+			return ($this->_env('DB_TABLE_PREFIX', true) ?: $this->_config('database.table_prefix'));
 		}
 	}
 
@@ -418,7 +418,7 @@ class Funcs extends BaseInstances {
 		return $this->_normalizePath($result);
 	}
 
-	public function _getAllClassesInDir($path = __DIR__, $namespace = __NAMESPACE__, $depth = null): array {
+	public function _getAllClassesInDir($path = __DIR__, $namespace = __NAMESPACE__, $depth = null) {
 		if (!is_dir($path)) {
 			return [];
 		}
@@ -1147,7 +1147,7 @@ class Funcs extends BaseInstances {
 			return get_locale();
 		}
 		else {
-			return $this->_env('APP_LOCALE', true, 'en');
+			return $this->_env('APP_LOCALE', true, 'en') ?: $this->_config('app.locale') ?: $this->_config('app.fallback_locale');
 		}
 	}
 
@@ -1189,13 +1189,13 @@ class Funcs extends BaseInstances {
 	 */
 
 	public function _isDebug() {
-		return $this->_env('APP_DEBUG', true) == 'true';
+		return ($this->_env('APP_DEBUG', true) ?: $this->_config('app.debug')) == 'true';
 	}
 
 	public function _isDebugBarValid() {
 		if (
 			(!is_null($this->_app()) && method_exists($this->_app(), 'runningInConsole') ? !$this->_app()->runningInConsole() : (php_sapi_name() === 'cli'))
-			&& $this->_env($this->_getPrefixEnv('APP_DEBUG_MONITOR')) === true
+			&& ($this->_env($this->_getPrefixEnv('APP_DEBUG_MONITOR')) ?: $this->_config('app.debug_monitor')) === true
 			&& class_exists('\Fruitcake\LaravelDebugbar\LaravelDebugbar')
 			&& !wp_doing_ajax()
 			&& !wp_doing_cron()
@@ -1222,15 +1222,15 @@ class Funcs extends BaseInstances {
 	}
 
 	public function _isDev() {
-		return $this->_env('APP_ENV', true) == 'dev';
+		return ($this->_env('APP_ENV', true) ?: $this->_config('app.env')) == 'dev';
 	}
 
 	public function _isLocal() {
-		return $this->_env('APP_ENV', true) == 'local';
+		return ($this->_env('APP_ENV', true) ?: $this->_config('app.env')) == 'local';
 	}
 
 	public function _isProduction() {
-		return $this->_env('APP_ENV', true) == 'production';
+		return ($this->_env('APP_ENV', true) ?: $this->_config('app.env')) == 'production';
 	}
 
 	public function _wantsJson() {
@@ -1457,7 +1457,7 @@ class Funcs extends BaseInstances {
 	}
 
 	public function _nonceName($name = null) {
-		return $this->_env('APP_SHORT_NAME', true) . ($name ? '_' . $name : '') . '_nonce';
+		return ($this->_env('APP_SHORT_NAME', true) ?: $this->_config('app.short_name')) . ($name ? '_' . $name : '') . '_nonce';
 	}
 
 	public function _slugParams($params = [], $separator = '_') {
