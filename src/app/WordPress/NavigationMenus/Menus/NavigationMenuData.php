@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\NavigationMenus\Menus;
+namespace WPSPCORELITE\App\WordPress\NavigationMenus\Menus;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
 
 class NavigationMenuData {
 

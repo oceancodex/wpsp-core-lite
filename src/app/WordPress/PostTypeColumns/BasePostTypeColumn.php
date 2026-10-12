@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\PostTypeColumns;
+namespace WPSPCORELITE\App\WordPress\PostTypeColumns;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @method void sort($query)

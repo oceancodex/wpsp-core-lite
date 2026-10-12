@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\MediaColumns;
+namespace WPSPCORELITE\App\Routes\MediaColumns;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait MediaColumnsRouteTrait {
 

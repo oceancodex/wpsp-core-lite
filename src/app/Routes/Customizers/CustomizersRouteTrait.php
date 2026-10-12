@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Customizers;
+namespace WPSPCORELITE\App\Routes\Customizers;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait CustomizersRouteTrait {
 

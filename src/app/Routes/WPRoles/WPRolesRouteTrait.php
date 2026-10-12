@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\WPRoles;
+namespace WPSPCORELITE\App\Routes\WPRoles;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait WPRolesRouteTrait {
 

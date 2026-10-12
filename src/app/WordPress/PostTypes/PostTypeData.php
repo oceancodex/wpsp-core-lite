@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\PostTypes;
+namespace WPSPCORELITE\App\WordPress\PostTypes;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
 
 class PostTypeData {
 

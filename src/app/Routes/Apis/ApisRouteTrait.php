@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Apis;
+namespace WPSPCORELITE\App\Routes\Apis;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait ApisRouteTrait {
 

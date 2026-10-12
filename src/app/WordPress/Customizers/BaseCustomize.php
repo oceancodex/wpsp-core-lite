@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\Customizers;
+namespace WPSPCORELITE\App\WordPress\Customizers;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseCustomize extends BaseInstances {
 

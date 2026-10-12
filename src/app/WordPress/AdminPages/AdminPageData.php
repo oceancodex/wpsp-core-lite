@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\AdminPages;
+namespace WPSPCORELITE\App\WordPress\AdminPages;
 
 class AdminPageData {
 
@@ -13,6 +13,10 @@ class AdminPageData {
 	private $position       = null;
 	private $isSubAdminPage = false;
 	private $parentSlug     = null;
+
+	/*
+	 *
+	 */
 
 	public function getMenuTitle() {
 		return $this->menuTitle;
