@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Actions;
+namespace WPSPCORELITE\App\Routes\Actions;
 
 trait ActionsRouteTrait {
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Filters;
+namespace WPSPCORELITE\App\Routes\Filters;
 
 trait FiltersRouteTrait {
 

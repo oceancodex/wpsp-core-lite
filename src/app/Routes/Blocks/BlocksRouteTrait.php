@@ -1,7 +1,7 @@
 <?php
-namespace WPSPCORE\App\Routes\Blocks;
+namespace WPSPCORELITE\App\Routes\Blocks;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait BlocksRouteTrait {
 

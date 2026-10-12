@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\Schedules;
+namespace WPSPCORELITE\App\WordPress\Schedules;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseSchedule extends BaseInstances {
 
@@ -104,7 +104,7 @@ abstract class BaseSchedule extends BaseInstances {
 			];
 
 			$callback   = $this->prepareRouteCallback([$this, $this->callback_function], $constructParams);
-			$callParams = $this->getCallParams($this->hook, $this->hook, $requestPath, $this, $this->callback_function);
+			$callParams = $this->getCallParams($this->hook, $this->hook, $requestPath, $this, $this->callback_function, ['route' => $this->extraParams['route'] ?? null]);
 			$this->resolveAndCall($callback, $callParams);
 		}
 	}

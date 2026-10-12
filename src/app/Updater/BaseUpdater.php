@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Updater;
+namespace WPSPCORELITE\App\Updater;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseUpdater extends BaseInstances {
 

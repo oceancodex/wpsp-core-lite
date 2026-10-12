@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\UserMetaBoxes;
+namespace WPSPCORELITE\App\WordPress\UserMetaBoxes;
 
 trait UserScreenOptionsTrait {
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Apis;
+namespace WPSPCORELITE\App\Routes\Apis;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this get(string $path, callable|array $callback, array $args = [])
@@ -15,7 +15,7 @@ use WPSPCORE\App\Routes\BaseRoute;
  */
 class Apis extends BaseRoute {
 
-	public $defaultNamespace = 'wpsp'; // Dòng này không có tác dụng, khai báo cho đẹp thôi, vì nó bị ghi đè trong "beforeConstruct" bên dưới.
+	public $defaultNamespace = 'wpsp-lite'; // Dòng này không có tác dụng, khai báo cho đẹp thôi, vì nó bị ghi đè trong "beforeConstruct" bên dưới.
 	public $defaultVersion   = 'v1';
 
 	/*
@@ -60,7 +60,9 @@ class Apis extends BaseRoute {
 			$this->prefixEnv,
 			[
 				'path'              => $path,
+				'path_regex'        => $pathRegex,
 				'full_path'         => $fullPath,
+				'full_path_regex'   => $fullPathRegex,
 				'method'            => $method,
 				'callback_function' => $callback[1] ?? null,
 			]
@@ -96,10 +98,14 @@ class Apis extends BaseRoute {
 			$routeNamespace,
 			$fullPathRegex,
 			[
-				'methods'             => strtoupper($method),
-				'callback'            => function(\WP_REST_Request $wpRestRequest) use ($callback, $path, $pathRegex, $fullPath, $fullPathRegex, $requestPath, $route) {
+				'methods'  => strtoupper($method),
+				'callback' => function(\WP_REST_Request $wpRestRequest) use ($callback, $path, $pathRegex, $fullPath, $fullPathRegex, $requestPath, $route) {
+					$this->setRouteResolver();
+
 					$callParams = $this->getCallParams($path, $fullPath, $requestPath, $callback[0], $callback[1], ['wpRestRequest' => $wpRestRequest, 'route' => $route]);
-					return $this->resolveAndCall($callback, $callParams);
+					$call = $this->resolveAndCall($callback, $callParams);
+
+					return $call;
 				},
 				'args' > [
 //				    'id' => [

@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\TaxonomyColumns;
+namespace WPSPCORELITE\App\WordPress\TaxonomyColumns;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @method void sort($query)

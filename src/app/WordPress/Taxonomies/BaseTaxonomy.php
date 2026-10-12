@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\Taxonomies;
+namespace WPSPCORELITE\App\WordPress\Taxonomies;
 
-use WPSPCORE\App\Traits\ObjectToArrayTrait;
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\App\Traits\ObjectToArrayTrait;
+use WPSPCORELITE\BaseInstances;
 
 /**
  * @property $labels
