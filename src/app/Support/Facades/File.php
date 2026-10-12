@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORELITE\App\Support\Facades\File;
+namespace WPSPCORELITE\App\Support\Facades;
 
 use WPSPCORELITE\App\Filesystem\Filesystem as FilesystemCore;
 use WPSPCORELITE\BaseInstances;
@@ -9,7 +9,11 @@ use WPSPCORELITE\BaseInstances;
  * Facade cho 'files' - mô phỏng Illuminate\Support\Facades\File.
  *
  * Gọi static:  File::exists($path), File::get($path), File::put($path, $content), File::allFiles($dir)
- * Lấy object:  File::instance() hoặc $this->funcs->_getApplication('files')
+ * Lấy object:  $this->funcs->_getApplication('files')
+ *
+ * - Gọi qua facade con của plugin: dùng 'files' trong Application của plugin đó.
+ * - Gọi thẳng class này trong core: dùng một Filesystem dùng chung (không cần funcs/app),
+ *   an toàn vì Filesystem không giữ state theo plugin - đường dẫn luôn truyền vào.
  *
  * Không dùng class này làm type-hint cho DI; hãy type-hint
  * \WPSPCORELITE\App\Filesystem\Filesystem (giống Laravel: type-hint Illuminate\Filesystem\Filesystem).
@@ -74,6 +78,20 @@ abstract class File extends BaseInstances {
 
 	private ?FilesystemCore $facade = null;
 
+	/**
+	 * Instance dùng khi gọi thẳng facade của core (WPSPCORELITE\...\Facades\File::put()).
+	 * Filesystem không có state theo plugin nên dùng chung an toàn.
+	 */
+	private static ?FilesystemCore $standalone = null;
+
+	/*
+	 *
+	 */
+
+	protected static function standalone(): FilesystemCore {
+		return self::$standalone ??= new FilesystemCore();
+	}
+
 	/*
 	 *
 	 */
@@ -95,6 +113,12 @@ abstract class File extends BaseInstances {
 	}
 
 	public static function __callStatic($method, $arguments) {
+		// Gọi thẳng facade của core (không qua class con của plugin) => dùng instance chung,
+		// không cần wpspInstance() / funcs.
+		if (static::class === self::class) {
+			return self::standalone()->$method(...$arguments);
+		}
+
 		$instance = static::wpspInstance();
 
 		$underlineMethod = '_' . $method;

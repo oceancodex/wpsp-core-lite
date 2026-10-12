@@ -121,6 +121,7 @@ abstract class WPSP extends BaseInstances {
 
 	private function bindingsBase(): void {
 		$this->application->instance('request', $this->request);
+
 		$this->application->instance('funcs', $this->funcs ??= new Funcs(
 			$this->mainPath,
 			$this->rootNamespace,

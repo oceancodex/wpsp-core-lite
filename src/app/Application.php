@@ -8,6 +8,8 @@
 
 namespace WPSPCORELITE\App;
 
+use WPSPCORELITE\App\Config\LoadConfiguration;
+use WPSPCORELITE\App\Config\Repository as ConfigRepository;
 use WPSPCORELITE\App\Filesystem\Filesystem;
 use WPSPCORELITE\App\Http\Request as WPSPCORE_Http_Request;
 use WPSPCORELITE\App\Support\Facades\Facade;
@@ -16,7 +18,8 @@ use WPSPCORELITE\App\Support\Facades\Facade;
  * Application - mô phỏng Illuminate\Foundation\Application bằng PHP thuần.
  *
  * - Container đầy đủ (kế thừa Container).
- * - Bindings sẵn có: 'app', 'request', 'files', 'commands', 'path.*'.
+ * - Bindings sẵn có: 'app', 'request', 'files', 'config', 'commands', 'path.*'.
+ * - 'config' nạp lười (lần make đầu tiên) toàn bộ file trong configPath() (mặc định <basePath>/config).
  * - Paths, environment, locale, service providers (kể cả deferred), boot/terminate.
  * - Cấu hình fluent: Application::configure($basePath)->withProviders([...])->withSingletons([...])->create().
  *
@@ -171,12 +174,18 @@ class Application extends Container {
 		$this->instance('app', $this);
 
 		$this->singleton('request', function() {
-			return Request::capture();
+			return WPSPCORE_Http_Request::capture();
 		});
 
 		// Giống Illuminate\Filesystem\FilesystemServiceProvider::registerNativeFilesystem().
 		$this->singleton('files', function() {
 			return new Filesystem();
+		});
+
+		// Giống Illuminate\Foundation\Bootstrap\LoadConfiguration, nhưng nạp lười:
+		// useConfigPath() vẫn có hiệu lực nếu gọi trước lần make('config') đầu tiên.
+		$this->singleton('config', function($app) {
+			return (new LoadConfiguration())->load($app);
 		});
 
 		$this->singleton('commands', function($app) {
@@ -213,6 +222,7 @@ class Application extends Container {
 			'app'      => array_unique([self::class, static::class, Container::class]),
 			'request'  => [WPSPCORE_Http_Request::class],
 			'files'    => [Filesystem::class],
+			'config'   => [ConfigRepository::class],
 			'commands' => [Commands::class],
 		];
 
@@ -358,6 +368,9 @@ class Application extends Container {
 		if (($env = getenv('APP_ENV')) !== false && $env !== '') {
 			return $env;
 		}
+		if (($env = $this->configValue('app.env')) !== null && $env !== '') {
+			return (string)$env;
+		}
 		if (function_exists('wp_get_environment_type')) {
 			return wp_get_environment_type();
 		}
@@ -386,7 +399,23 @@ class Application extends Container {
 		if ($env !== false) {
 			return filter_var($env, FILTER_VALIDATE_BOOLEAN);
 		}
+		if (($debug = $this->configValue('app.debug')) !== null) {
+			return filter_var($debug, FILTER_VALIDATE_BOOLEAN);
+		}
 		return defined('WP_DEBUG') && WP_DEBUG;
+	}
+
+	/**
+	 * Đọc config nếu có, không ném lỗi khi chưa có binding 'config'.
+	 */
+	protected function configValue($key, $default = null) {
+		if (!$this->bound('config')) {
+			return $default;
+		}
+
+		$config = $this->make('config');
+
+		return is_object($config) && method_exists($config, 'get') ? $config->get($key, $default) : $default;
 	}
 
 	/*
@@ -396,7 +425,9 @@ class Application extends Container {
 	 */
 
 	public function getLocale() {
-		return $this->locale ?? (function_exists('get_locale') ? get_locale() : 'en');
+		return $this->locale
+			?? $this->configValue('app.locale')
+			?? (function_exists('get_locale') ? get_locale() : 'en');
 	}
 
 	public function currentLocale() {
@@ -405,6 +436,10 @@ class Application extends Container {
 
 	public function setLocale($locale) {
 		$this->locale = $locale;
+
+		if ($this->resolved('config')) {
+			$this->make('config')->set('app.locale', $locale);
+		}
 
 		if ($this->resolved('request')) {
 			$this->make('request')->setLocale($locale);

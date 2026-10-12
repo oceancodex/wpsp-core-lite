@@ -4,7 +4,7 @@ namespace WPSPCORELITE\App\Console\Commands;
 
 use WPSPCORELITE\App\Console\Command;
 use Illuminate\Support\Str;
-use WPSPCORELITE\App\File\File;
+use WPSPCORELITE\App\Support\Facades\File;
 use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeAjaxCommand extends Command {

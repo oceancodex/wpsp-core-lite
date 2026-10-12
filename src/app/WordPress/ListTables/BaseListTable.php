@@ -40,7 +40,7 @@ abstract class BaseListTable extends \WP_List_Table {
 
 		// Chuẩn hóa "itemsPerPageKey".
 		if (!$this->itemsPerPageKey) {
-			$this->itemsPerPageKey = $this->currentScreen?->id ?? $this->funcs?->_getAppShortName() ?? 'wpsp';
+			$this->itemsPerPageKey = $this->currentScreen?->id ?? $this->funcs?->_getAppShortName() ?? 'wpsp_lite';
 			$this->itemsPerPageKey .= '_items_per_page';
 		}
 

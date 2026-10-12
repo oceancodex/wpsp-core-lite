@@ -1,30 +1,27 @@
 <?php
 
-namespace WPSPCORELITE\App\Support\Facades\Artisan;
+namespace WPSPCORELITE\App\Support\Facades;
 
-use WPSPCORELITE\App\Commands;
+use WPSPCORELITE\App\Application;
 use WPSPCORELITE\BaseInstances;
 
 /**
- * @mixin \Illuminate\Support\Facades\Artisan
- * @method static string outputHtml()
- * @method static void writeError(string $text)
- * @method static int call(?string $name = null, array $parameters = [])
+ * @mixin \WPSPCORELITE\App\Application
  */
-abstract class Artisan extends BaseInstances {
+abstract class App extends BaseInstances {
 
-	private ?Commands $facade;
+	private ?Application $facade;
 
 	/*
 	 *
 	 */
 
-	public function getFacade(): ?Commands {
+	public function getFacade(): ?Application {
 		return $this->facade;
 	}
 
 	public function setFacade() {
-		$this->facade = $this->funcs->_getApplication('commands');
+		$this->facade = $this->funcs->_getApplication();
 	}
 
 	/*

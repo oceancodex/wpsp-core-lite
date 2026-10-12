@@ -2,7 +2,7 @@
 
 namespace WPSPCORELITE\App\Console\Traits;
 
-use WPSPCORELITE\App\File\File;
+use WPSPCORELITE\App\Support\Facades\File;
 use WPSPCORELITE\Funcs;
 
 /**

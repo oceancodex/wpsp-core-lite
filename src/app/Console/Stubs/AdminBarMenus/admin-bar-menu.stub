@@ -12,7 +12,7 @@ class {{ class_name }} extends BaseAdminBarMenu {
 	// Args.
 	public $id     = '{{ name }}';
 	public $title  = '{{ name }}';
-	public $href   = '/wp-admin/admin.php?page=wpsp';
+	public $href   = '/wp-admin/admin.php?page=wpsp_lite';
 	public $parent = {{ parent }};
 	public $meta   = [];
 

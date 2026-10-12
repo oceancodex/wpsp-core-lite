@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORELITE\App\Support\Facades\Request;
+namespace WPSPCORELITE\App\Support\Facades;
 
 use WPSPCORELITE\App\Http\Request as RequestCore;
 use WPSPCORELITE\BaseInstances;

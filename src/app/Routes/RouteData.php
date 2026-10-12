@@ -161,10 +161,10 @@ class RouteData {
 	/**
 	 * Gán namespace cho route.\
 	 * Ví dụ:
-	 * - Route::namespace('wpsp')->group(...)
-	 * - Route::namespace('wpsp')->get(...)
+	 * - Route::namespace('wpsp_lite')->group(...)
+	 * - Route::namespace('wpsp_lite')->get(...)
 	 *
-	 * → namespace = 'wpsp'
+	 * → namespace = 'wpsp_lite'
 	 */
 	public function namespace($value): RouteData {
 		$this->namespace = $value;
