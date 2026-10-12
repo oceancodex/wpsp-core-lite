@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\MetaBoxes;
+namespace WPSPCORELITE\App\Routes\MetaBoxes;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait MetaBoxesRouteTrait {
 

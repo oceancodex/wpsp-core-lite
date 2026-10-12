@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\NavigationMenus\Locations;
+namespace WPSPCORELITE\App\Routes\NavigationMenus\Locations;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait NavLocationsRouteTrait {
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Translation;
+namespace WPSPCORELITE\App\Translation;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseWPTranslation extends BaseInstances {
 

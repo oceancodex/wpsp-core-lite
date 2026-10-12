@@ -1,0 +1,40 @@
+<?php
+
+namespace {{ root_namespace }}\App\WordPress\WPRoles;
+
+use {{ root_namespace }}\App\Widen\Traits\InstancesTrait;
+use {{ core_namespace }}\App\WordPress\WPRoles\BaseWPRole;
+
+class {{ class_name }} extends BaseWPRole {
+
+	use InstancesTrait;
+
+//	public $role         = '{{ name }}';
+//	public $display_name = '{{ name }}';
+//	public $capabilities = [
+//		'edit_pages',
+//		'manage_options',
+//		'edit_themes',
+//	];
+
+	/*
+	 *
+	 */
+
+	/**
+	 * Trong "__wpspConstruct", tất cả params với type là Class hợp lệ\
+	 * đều được sử dụng để tạo properties tự động.
+	 */
+//	public function __wpspConstruct() {}
+
+//	public function __instanceConstruct() {}
+
+	/*
+	 *
+	 */
+
+	public function customProperties() {
+//		$this->capabilities = [];
+	}
+
+}

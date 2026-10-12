@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Actions;
+namespace WPSPCORELITE\App\Routes\Actions;
 
-use WPSPCORE\App\Routes\BaseRoute;
+use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
  * @method static $this action(string $action, callable|array $callback, array $args = [])
@@ -18,12 +18,14 @@ class Actions extends BaseRoute {
 	public function execute($route) {
 		$requestPath = ltrim($this->request->getRequestUri(), '/\\');
 
-		$path         = $route->path;
-		$fullPath     = $route->fullPath;
-		$callback     = $route->callback;
-		$middlewares  = $route->middlewares;
-		$priority     = $route->args['priority'] ?? 10;
-		$acceptedArgs = $route->args['accepted_args'] ?? 1;
+		$path          = $route->path;
+		$pathRegex     = $route->pathRegex;
+		$fullPath      = $route->fullPath;
+		$fullPathRegex = $route->fullPathRegex;
+		$callback      = $route->callback;
+		$middlewares   = $route->middlewares;
+		$priority      = $route->args['priority'] ?? 10;
+		$acceptedArgs  = $route->args['accepted_args'] ?? 1;
 
 		if ($this->isPassedMiddleware($middlewares, $this->request, ['route' => $route])) {
 			if (is_array($callback) || is_callable($callback) || is_null($callback[1])) {
@@ -33,7 +35,9 @@ class Actions extends BaseRoute {
 					$this->funcs->_getPrefixEnv(),
 					[
 						'path'              => $path,
+						'path_regex'        => $pathRegex,
 						'full_path'         => $fullPath,
+						'full_path_regex'   => $fullPathRegex,
 						'callback_function' => $callback[1] ?? null,
 					],
 				];
@@ -82,15 +86,7 @@ class Actions extends BaseRoute {
 				add_action(
 					$fullPath,
 					function(...$wpParams) use ($path, $fullPath, $requestPath, $callback, $route) {
-						$callParams = $this->getCallParams(
-							$path,
-							$fullPath,
-							$requestPath,
-							$callback[0],
-							$callback[1],
-							['route' => $route],
-							$wpParams
-						);
+						$callParams = $this->getCallParams($path, $fullPath, $requestPath, $callback[0], $callback[1], ['route' => $route], $wpParams);
 
 						return $this->resolveAndCall(
 							$callback,

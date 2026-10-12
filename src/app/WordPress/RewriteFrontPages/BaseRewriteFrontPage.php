@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\RewriteFrontPages;
+namespace WPSPCORELITE\App\WordPress\RewriteFrontPages;
 
-use WPSPCORE\BaseInstances;
+use WPSPCORELITE\BaseInstances;
 
 abstract class BaseRewriteFrontPage extends BaseInstances {
 
@@ -70,7 +70,7 @@ abstract class BaseRewriteFrontPage extends BaseInstances {
 		$regexPath   = !str_ends_with($regexPath, $regexSuffix) ? $regexPath . $regexSuffix : $regexPath;
 
 		$fullPathEx = !str_starts_with($fullPath, $regexPrefix) ? $regexPrefix . $fullPath : $fullPath;
-		$fullPathEx = !str_ends_with($fullPathEx, $regexSuffix) ? $regexPath . $fullPathEx : $fullPathEx;
+		$fullPathEx = !str_ends_with($fullPathEx, $regexSuffix) ? $fullPathEx . $regexSuffix : $fullPathEx;
 
 		$appShortName = $this->funcs->_config('app.short_name');
 
@@ -79,7 +79,7 @@ abstract class BaseRewriteFrontPage extends BaseInstances {
 			 * Parse tất cả capture group (...) trong regex
 			 * để map sang query vars: _rewrite_group_1, _rewrite_group_2, ...
 			 */
-			preg_match_all('/\(.+?\)/iu', $regexPath, $groupMatches);
+			@preg_match_all('/\(.+?\)/iu', $regexPath, $groupMatches);
 
 			$stringMatches = '';
 
@@ -115,9 +115,9 @@ abstract class BaseRewriteFrontPage extends BaseInstances {
 			 * (tránh hook không cần thiết)
 			 */
 			try {
-				$matched = preg_match('/' . $regexPath . '/iu', $requestPath, $matches);
+				$matched = @preg_match('/' . $regexPath . '/iu', $requestPath, $matches);
 				if (!$matched) {
-					$matched = preg_match('/' . $fullPathEx . '/iu', $requestPath, $matches);
+					$matched = @preg_match('/' . $fullPathEx . '/iu', $requestPath, $matches);
 				}
 			}
 			catch (\Throwable $e) {

@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Schedules;
+namespace WPSPCORELITE\App\Routes\Schedules;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait SchedulesRouteTrait {
 

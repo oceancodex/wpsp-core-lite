@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\Widgets;
+namespace WPSPCORELITE\App\Routes\Widgets;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait WidgetsRouteTrait {
 

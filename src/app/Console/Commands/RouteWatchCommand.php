@@ -1,9 +1,9 @@
 <?php
 
-namespace WPSPCORE\App\Console\Commands;
+namespace WPSPCORELITE\App\Console\Commands;
 
-use Illuminate\Console\Command;
-use WPSPCORE\App\Console\Traits\CommandsTrait;
+use WPSPCORELITE\App\Console\Command;
+use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class RouteWatchCommand extends Command {
 
@@ -26,7 +26,7 @@ class RouteWatchCommand extends Command {
 
 		$mainPath = $this->funcs->_getMainPath();
 		$watchDir = $mainPath . '/routes';
-		$ide      = strtolower($this->option('ide'));
+		$ide      = strtolower($this->option('ide') ?: '');
 		$ideStr   = $ide ? " --ide={$ide}" : null;
 
 		if (!is_dir($watchDir)) {

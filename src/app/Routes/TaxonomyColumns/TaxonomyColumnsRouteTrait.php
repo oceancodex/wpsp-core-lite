@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\Routes\TaxonomyColumns;
+namespace WPSPCORELITE\App\Routes\TaxonomyColumns;
 
-use WPSPCORE\App\Traits\HookRunnerTrait;
+use WPSPCORELITE\App\Traits\HookRunnerTrait;
 
 trait TaxonomyColumnsRouteTrait {
 

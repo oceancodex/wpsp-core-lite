@@ -1,8 +1,8 @@
 <?php
 
-namespace WPSPCORE\App\WordPress\Widgets;
+namespace WPSPCORELITE\App\WordPress\Widgets;
 
-use WPSPCORE\App\Traits\BaseInstancesTrait;
+use WPSPCORELITE\App\Traits\BaseInstancesTrait;
 
 abstract class BaseWidget extends \WP_Widget {
 
