@@ -1218,13 +1218,18 @@ class Request implements ArrayAccess, JsonSerializable {
 	 | Route & user
 	 * ================================================================== */
 
+	/**
+	 * @return \WP_User|null
+	 */
 	public function user($guard = null) {
 		return call_user_func($this->getUserResolver(), $guard);
 	}
 
 	public function getUserResolver(): Closure {
-		return $this->userResolver ?: function() {
-			return null;
+		return $this->userResolver ?: static function ($guard = null) {
+			if (!function_exists('wp_get_current_user')) return null;
+			$user = wp_get_current_user();
+			return $user->exists() ? $user : null;
 		};
 	}
 
