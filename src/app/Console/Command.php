@@ -404,28 +404,6 @@ abstract class Command {
 		return !$this->option('no-interaction') && (!function_exists('stream_isatty') || @stream_isatty(STDIN));
 	}
 
-	protected function readLine($prompt) {
-		// In phần câu hỏi (có màu, có xuống dòng) bằng echo,
-		// chỉ đưa dòng prompt cuối cùng cho readline().
-		$pos = strrpos($prompt, "\n");
-		if ($pos !== false) {
-			echo substr($prompt, 0, $pos + 1);
-			$prompt = substr($prompt, $pos + 1);
-		}
-
-		// readline() đếm cả byte mã màu ANSI => lệch con trỏ (rõ nhất trên Windows).
-		$prompt = preg_replace('/\033\[[0-9;]*m/', '', $prompt);
-
-		if (function_exists('readline') && @stream_isatty(STDIN)) {
-			$line = readline($prompt);
-			return $line === false ? null : $line;
-		}
-
-		echo $prompt;
-		$line = fgets(STDIN);
-		return $line === false ? null : rtrim($line, "\r\n");
-	}
-
 	public function ask($question, $default = null) {
 		if (!$this->interactive()) return $default;
 
@@ -434,21 +412,6 @@ abstract class Command {
 		$answer = $answer === null ? '' : trim($answer);
 
 		return $answer === '' ? $default : $answer;
-	}
-
-	public function secret($question) {
-		if (!$this->interactive()) return null;
-
-		echo $this->color(" {$question}", 'green') . ":\n > ";
-		$hide = DIRECTORY_SEPARATOR === '/' && @stream_isatty(STDIN);
-		if ($hide) shell_exec('stty -echo');
-		$line = fgets(STDIN);
-		if ($hide) {
-			shell_exec('stty echo');
-			echo PHP_EOL;
-		}
-
-		return $line === false ? null : rtrim($line, "\r\n");
 	}
 
 	public function confirm($question, $default = false) {
@@ -462,6 +425,74 @@ abstract class Command {
 		return in_array($answer, ['y', 'yes', '1', 'true', 'có', 'co'], true);
 	}
 
+	/**
+	 * Đẩy mọi output đang bị giữ trong buffer ra màn hình trước khi chờ nhập.
+	 * Bootstrap (WP/plugin) có thể đã mở ob_start() => echo bị giữ lại,
+	 * trong khi readline()/STDIN chờ ngay => câu hỏi hiện sau câu trả lời.
+	 */
+	protected function flushOutput() {
+		// Đang chạy qua Commands::call() thì không đụng vào buffer của nó.
+		if ($this->application && $this->isBuffering()) {
+			return;
+		}
+
+		while (ob_get_level() > 0) {
+			ob_end_flush();
+		}
+		flush();
+	}
+
+	protected function isBuffering() {
+		return method_exists($this->application, 'isBuffering') && $this->application->isBuffering();
+	}
+
+	protected function readLine($prompt) {
+		$pos = strrpos($prompt, "\n");
+		if ($pos !== false) {
+			echo substr($prompt, 0, $pos + 1);
+			$prompt = substr($prompt, $pos + 1);
+		}
+
+		$this->flushOutput();
+
+		// readline() đếm cả byte mã màu ANSI => lệch con trỏ (rõ nhất trên Windows).
+		$prompt = preg_replace('/\033\[[0-9;]*m/', '', $prompt);
+
+		if (function_exists('readline') && @stream_isatty(STDIN)) {
+			$line = readline($prompt);
+			return $line === false ? null : $line;
+		}
+
+		echo $prompt;
+		$this->flushOutput();
+		$line = fgets(STDIN);
+		return $line === false ? null : rtrim($line, "\r\n");
+	}
+
+	public function secret($question) {
+		if (!$this->interactive()) return null;
+
+		echo $this->color(" {$question}", 'green') . ":\n > ";
+		$this->flushOutput();
+
+		$hide = DIRECTORY_SEPARATOR === '/' && @stream_isatty(STDIN);
+		if ($hide) shell_exec('stty -echo');
+
+		try {
+			$line = fgets(STDIN);
+		}
+		finally {
+			// Luôn bật lại echo của terminal, kể cả khi bị lỗi/ngắt giữa chừng.
+			if ($hide) {
+				shell_exec('stty echo');
+				echo PHP_EOL;
+				$this->flushOutput();
+			}
+		}
+
+		return $line === false ? null : rtrim($line, "\r\n");
+	}
+
 	public function choice($question, array $choices, $default = null) {
 		if (!$this->interactive()) {
 			return is_int($default) ? ($choices[$default] ?? null) : $default;
@@ -469,17 +500,22 @@ abstract class Command {
 
 		$defaultLabel = is_int($default) ? ($choices[$default] ?? null) : $default;
 		$hint         = $defaultLabel !== null ? ' [' . $this->color($defaultLabel, 'yellow') . ']' : '';
+
 		echo $this->color(" {$question}", 'green') . "{$hint}:\n";
 		foreach ($choices as $key => $label) {
 			echo "  [" . $this->color($key, 'yellow') . "] {$label}\n";
 		}
+		$this->flushOutput();
 
 		while (true) {
 			$answer = trim((string)$this->readLine(' > '));
+
 			if ($answer === '' && $defaultLabel !== null) return $defaultLabel;
 			if (array_key_exists($answer, $choices)) return $choices[$answer];
 			if (in_array($answer, $choices, true)) return $answer;
+
 			$this->error("Value \"{$answer}\" is invalid.");
+			$this->flushOutput();
 		}
 	}
 

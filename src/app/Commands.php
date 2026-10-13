@@ -80,6 +80,10 @@ class Commands {
 			|| in_array(ltrim($class, '\\'), $this->except, true);
 	}
 
+	public function isBuffering() {
+		return $this->buffering;
+	}
+
 	/**
 	 * Thêm thư mục / class / object. Nạp lười cho tới khi cần.
 	 */
@@ -238,6 +242,14 @@ class Commands {
 	 * Chạy theo argv (mặc định $_SERVER['argv']). Trả về exit code.
 	 */
 	public function run(?array $argv = null) {
+		// Bootstrap (WP/plugin) có thể đã mở output buffer => echo bị giữ lại,
+		// trong khi readline() ghi thẳng ra console => sai thứ tự.
+		if (PHP_SAPI === 'cli') {
+			while (ob_get_level() > 0) {
+				ob_end_flush();
+			}
+		}
+
 		$tokens = array_slice($argv ?? $_SERVER['argv'] ?? [], 1);
 
 		foreach (['--no-ansi' => false, '--ansi' => true] as $flag => $value) {
