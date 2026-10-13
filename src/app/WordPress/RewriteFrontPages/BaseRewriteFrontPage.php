@@ -13,7 +13,7 @@ abstract class BaseRewriteFrontPage extends BaseInstances {
 	public $rewriteFrontPageSlug     = 'rewrite-front-pages';
 	public $rewriteFrontPagePostType = 'page';
 
-	public $callback_function = null;
+	public $callback_function        = null;
 
 	/*
 	 *

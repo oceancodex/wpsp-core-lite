@@ -549,8 +549,32 @@ trait RouteTrait {
 	/**
 	 * Chuẩn bị callback cho route trước khi thực thi.
 	 *
-	 * - Closure                        → trả về nguyên bản.
-	 * - [ClassName::class, 'method']   → khởi tạo class với $constructParams, trả về [object, method].
+	 * Hỗ trợ các dạng callback:
+	 *
+	 * - Closure
+	 * - [ClassName::class, 'method']
+	 *
+	 * Nếu callback là Closure, hàm sẽ trả về nguyên bản.
+	 * Nếu callback là mảng chứa tên class và method, một instance của class
+	 * sẽ được khởi tạo bằng các tham số truyền vào thông qua `$constructParams`,
+	 * sau đó trả về dưới dạng callable `[object, method]`.
+	 *
+	 * Ví dụ:
+	 *
+	 * prepareRouteCallback(function () {});
+	 *
+	 * prepareRouteCallback([
+	 *     UserController::class,
+	 *     'index'
+	 * ]);
+	 *
+	 * Nếu callback không thuộc các định dạng được hỗ trợ,
+	 * RuntimeException sẽ được ném ra.
+	 *
+	 * @param mixed $callback Callback cần chuẩn hóa.
+	 * @param array $constructParams Các tham số truyền vào constructor của class.
+	 *
+	 * @return callable Callback đã được chuẩn hóa và sẵn sàng để thực thi.
 	 *
 	 * @throws \RuntimeException Khi callback không hợp lệ.
 	 */
@@ -717,22 +741,27 @@ trait RouteTrait {
 				continue;
 			}
 
-			// 1) named capture → 2) attributes → 3) POST → 4) GET → 5) positional → 6) default
+			// 1) Nếu có named capture trùng tên param -> ưu tiên
 			if (array_key_exists($name, $named)) {
 				$value = $named[$name];
 			}
+			// 2) attributes (request attributes)
 			elseif (array_key_exists($name, $attr)) {
 				$value = $attr[$name];
 			}
+			// 3) POST (body)
 			elseif (array_key_exists($name, $post)) {
 				$value = $post[$name];
 			}
+			// 4) Query string
 			elseif (array_key_exists($name, $query)) {
 				$value = $query[$name];
 			}
+			// 5) Positional capture fallback
 			elseif (isset($positional[$posIndex])) {
 				$value = $positional[$posIndex++];
 			}
+			// 6) Default value from signature
 			elseif ($param->isDefaultValueAvailable()) {
 				$value = $param->getDefaultValue();
 			}
@@ -1001,7 +1030,7 @@ trait RouteTrait {
 	public function setRouteResolver() {
 		$route = $this->funcs->_getRouteManager()->currentRoute() ?? null;
 
-		if (!$route || !in_array($route->type, ['AdminPages', 'Apis', 'Ajaxs', 'FrontPages', 'RewriteFrontPages'], true)) {
+		if (!$route || !in_array($route->type, ['AdminPages', 'Apis', 'Ajaxs', 'FrontPages', 'RewriteFrontPages'])) {
 			return;
 		}
 
@@ -1027,7 +1056,6 @@ trait RouteTrait {
 			return;
 		}
 
-		// Bản "…$/iu" cũ là tập con của bản không neo bên dưới nên đã bỏ.
 		if (
 			@preg_match('/' . $route->fullPathRegex . '/iu', $requestPath)
 			|| @preg_match('/' . $fullPath . '/iu', $requestPath)
@@ -1184,14 +1212,16 @@ trait RouteTrait {
 	}
 
 	/**
-	 * Trả về callback với Dependency Injection. Tự động hoàn toàn.
+	 * Trả về callback với Dependency Injection.\
+	 * Tự động hoàn toàn.
 	 */
 	public function autoResolveCallback($path, $fullPath, $requestPath, $callbackOrClass, $method = null, $args = []) {
 		return $this->autoResolveAndCall($path, $fullPath, $requestPath, $callbackOrClass, $method, $args, false);
 	}
 
 	/**
-	 * Gọi callback với Dependency Injection. Tự động hoàn toàn.
+	 * Gọi callback với Dependency Injection.\
+	 * Tự động hoàn toàn.
 	 */
 	public function autoResolveAndCall($path, $fullPath, $requestPath, $callbackOrClass, $method = null, $args = [], $call = true) {
 		$class  = is_array($callbackOrClass) ? $callbackOrClass[0] : $callbackOrClass;

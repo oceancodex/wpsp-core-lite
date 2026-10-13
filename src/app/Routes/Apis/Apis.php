@@ -15,7 +15,7 @@ use WPSPCORELITE\App\Routes\BaseRoute;
  */
 class Apis extends BaseRoute {
 
-	public $defaultNamespace = 'wpsp-lite'; // Dòng này không có tác dụng, khai báo cho đẹp thôi, vì nó bị ghi đè trong "beforeConstruct" bên dưới.
+	public $defaultNamespace = 'wpsp_lite'; // Dòng này không có tác dụng, khai báo cho đẹp thôi, vì nó bị ghi đè trong "beforeConstruct" bên dưới.
 	public $defaultVersion   = 'v1';
 
 	/*
