@@ -125,7 +125,6 @@ use WPSPCORELITE\App\Routes\RouteRegexParser;
 class Funcs extends BaseInstances {
 
 	public $WPSPClass;
-	public $requestClass;
 	public $routeMapClass;
 	public $routeManagerClass;
 
@@ -135,7 +134,6 @@ class Funcs extends BaseInstances {
 
 	public function afterConstruct() {
 		$this->WPSPClass         = '\\' . $this->rootNamespace . '\WPSP';
-		$this->requestClass      = '\\' . $this->rootNamespace . '\App\Http\Request';
 		$this->routeMapClass     = '\\' . $this->rootNamespace . '\App\Widen\Routes\RouteMap';
 		$this->routeManagerClass = '\\' . $this->rootNamespace . '\App\Widen\Routes\RouteManager';
 	}
@@ -156,10 +154,6 @@ class Funcs extends BaseInstances {
 
 	public function _getWPSPClass() {
 		return $this->WPSPClass;
-	}
-
-	public function _getRequestClass() {
-		return $this->requestClass;
 	}
 
 	/**
