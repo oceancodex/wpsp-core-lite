@@ -2,9 +2,6 @@
 
 namespace WPSPCORELITE;
 
-use Carbon\Carbon;
-use WPSPCORELITE\App\Http\Request;
-use Illuminate\View\View;
 use NumberFormatter;
 use WPSPCORELITE\App\Routes\RouteRegexParser;
 
@@ -481,7 +478,7 @@ class Funcs extends BaseInstances {
 				// Chuẩn hóa đường dẫn thư mục thành Namespace (hỗ trợ cả Windows & Linux)
 				$subNamespace = $relativePath ? str_replace(['/', '\\'], '\\', $relativePath) : '';
 
-				// Build namespace đầy đủ
+				// Build namespace đầy đủ một cách gọn gàng, loại bỏ các dấu \ thừa
 				$className = rtrim($namespace, '\\');
 				if ($subNamespace) {
 					$className .= '\\' . trim($subNamespace, '\\');
@@ -860,15 +857,15 @@ class Funcs extends BaseInstances {
 	}
 
 	public function _view($viewName = null, $data = [], $mergeData = [], $instance = false) {
-		/** @var \Illuminate\View\Factory $blade */
-		$blade = $this->_app('view');
+		/** @var \Illuminate\View\Factory $view */
+		$view = $this->_app('view');
 
 		try {
 			if (!$viewName && $instance) {
-				return $blade ?? null;
+				return $view ?? null;
 			}
 
-			return $blade?->make($viewName, $data, $mergeData);
+			return $view?->make($viewName, $data, $mergeData);
 		}
 		catch (\Throwable $e) {
 			return '<div class="wrap"><div class="notice notice-error"><p>' . $e->getMessage() . '</p></div></div>';
@@ -880,7 +877,7 @@ class Funcs extends BaseInstances {
 			return $this->_viewInstance()?->composer($views, $data);
 		}
 		elseif (is_array($data)) {
-			return $this->_viewInstance()?->composer($views, function(View $view) use ($data) {
+			return $this->_viewInstance()?->composer($views, function($view) use ($data) {
 				foreach ($data as $key => $value) {
 					$view->with($key, $value);
 				}
@@ -1107,19 +1104,32 @@ class Funcs extends BaseInstances {
 		return $finalUrl;
 	}
 
-	public function _trans($string, $replaces = [], $wordpress = false) {
+	public function _trans($string, $replaces = [], $forceWordPress = false) {
+		// Nếu $replaces được truyền vào là true (để tương thích ngược với cách gọi cũ)
+		if ($forceWordPress || is_bool($replaces)) {
+			$forceWordPress = true;
+			$replaces       = [];
+		}
+
 		try {
-			if ($wordpress || !class_exists('Illuminate\Translation\Translator')) {
-				foreach (($replaces ?? []) as $find => $replace) {
+			// Nếu bắt buộc dùng WordPress hoặc không tồn tại Laravel Translator
+			if ($forceWordPress || !class_exists('Illuminate\Translation\Translator')) {
+				foreach ($replaces as $find => $replace) {
 					$string = str_replace($find, $replace, $string);
 				}
 				return __($string, $this->_getTextDomain());
 			}
-			else {
-				/** @var \Illuminate\Translation\Translator $translation */
-				$translation = $this->_app('translator');
-				return $translation->has($string) ? $translation->get($string, $replaces) : $translation->get($string, $replaces, $this->_config('app.fallback_locale'));
+
+			/** @var \Illuminate\Translation\Translator $translation */
+			$translation = $this->_app('translator');
+
+			// Kiểm tra key tồn tại, nếu không dùng bản fallback
+			if ($translation->has($string)) {
+				return $translation->get($string, $replaces);
 			}
+
+			return $translation->get($string, $replaces, $this->_config('app.fallback_locale'));
+
 		}
 		catch (\Throwable $e) {
 			return $string;
@@ -1423,7 +1433,7 @@ class Funcs extends BaseInstances {
 		return true;
 	}
 
-	public function _isWPInternalRequest(?Request $request = null): bool {
+	public function _isWPInternalRequest($request = null): bool {
 		if (
 			(defined('DOING_CRON') && DOING_CRON)
 			|| (defined('WP_CLI') && WP_CLI)
@@ -1756,10 +1766,57 @@ class Funcs extends BaseInstances {
 
 	public function _dateDiffForHumans($dateString, $format = 'H:i:s - d/m/Y') {
 		try {
-			return Carbon::createFromFormat($format, $dateString, wp_timezone_string())->locale(get_locale())->diffForHumans();
+			// Thử sử dụng Carbon trước
+			return Carbon::createFromFormat($format, $dateString, $this->_config('app.timezone'))
+				->locale($this->_config('app.locale'))
+				->diffForHumans();
 		}
 		catch (\Throwable $e) {
-			return $this->_trans('messages.undefined');
+			try {
+				// Fallback sang PHP thuần (Native DateTime)
+				$timezoneString = $this->_config('app.timezone') ?: date_default_timezone_get();
+				$timezone = new \DateTimeZone($timezoneString);
+
+				// Cố gắng parse theo format truyền vào
+				$date = \DateTime::createFromFormat($format, $dateString, $timezone);
+
+				// Nếu parse theo format thất bại, thử parse tự do
+				if ($date === false) {
+					$date = new \DateTime($dateString, $timezone);
+				}
+
+				$now = new \DateTime('now', $timezone);
+				$interval = $now->diff($date);
+				$isPast = $date < $now;
+
+				// Kiểm tra ngôn ngữ (mặc định tiếng Việt hoặc có thể tùy biến)
+				$locale = $this->_config('app.locale') ?? 'vi';
+				$suffix = $isPast ? 'trước' : 'sau';
+				if ($locale === 'en') {
+					$suffix = $isPast ? 'ago' : 'from now';
+				}
+
+				// Tính toán khoảng cách thời gian tương đối
+				if ($interval->y > 0) {
+					$time = $interval->y . ($locale === 'en' ? ' year(s)' : ' năm');
+				} elseif ($interval->m > 0) {
+					$time = $interval->m . ($locale === 'en' ? ' month(s)' : ' tháng');
+				} elseif ($interval->d > 0) {
+					$time = $interval->d . ($locale === 'en' ? ' day(s)' : ' ngày');
+				} elseif ($interval->h > 0) {
+					$time = $interval->h . ($locale === 'en' ? ' hour(s)' : ' giờ');
+				} elseif ($interval->i > 0) {
+					$time = $interval->i . ($locale === 'en' ? ' minute(s)' : ' phút');
+				} else {
+					return $locale === 'en' ? 'Just now' : 'Vừa xong';
+				}
+
+				return $locale === 'en' ? "$time $suffix" : "$time $suffix";
+			}
+			catch (\Throwable $fallbackEx) {
+				// Nếu PHP thuần cũng lỗi, trả về message lỗi gốc của Carbon
+				return $e->getMessage();
+			}
 		}
 	}
 
