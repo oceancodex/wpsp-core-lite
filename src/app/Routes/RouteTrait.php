@@ -597,7 +597,7 @@ trait RouteTrait {
 	 */
 	public function prepareCallbackFunction($method, $path, $fullPath, $class = null, $args = []): \Closure {
 		return function(...$wpParams) use ($method, $path, $fullPath, $class, $args) {
-			$requestPath = ltrim($this->request->getRequestUri(), '/\\');
+			$requestPath = $this->request->getRequestUri();
 
 			// Nếu truyền tên class thay vì instance, tự khởi tạo class với DI.
 			$targetInstance = $class;
@@ -1042,7 +1042,7 @@ trait RouteTrait {
 			return;
 		}
 
-		$requestPath = ltrim($this->request->getRequestUri(), '/\\');
+		$requestPath = $this->request->getRequestUri();
 		$fullPath    = $route->fullPath;
 		$regexPath   = $this->funcs->_regexPath($fullPath, $route->args['force_regex'] ?? false);
 
