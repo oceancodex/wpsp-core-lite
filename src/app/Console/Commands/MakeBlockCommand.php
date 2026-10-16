@@ -4,7 +4,6 @@ namespace WPSPCORELITE\App\Console\Commands;
 
 use WPSPCORELITE\App\Console\Command;
 use WPSPCORELITE\App\Support\Facades\File;
-use Illuminate\Support\Str;
 use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeBlockCommand extends Command {
@@ -54,7 +53,7 @@ class MakeBlockCommand extends Command {
 
 		// Chuẩn bị thêm các biến để sử dụng.
 		$className    = preg_replace('/[^A-Za-z0-9_]/', '_', $name);
-		$blockDirName = Str::slug($name, '-');
+		$blockDirName = $this->slug($name);
 		$createView   = $createView ?? $this->option('view') ?: false;
 		$isBlade      = $createView ? '.blade' : null;
 
