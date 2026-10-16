@@ -2,7 +2,7 @@
 
 namespace WPSPCORELITE\App\Routes;
 
-use Illuminate\Support\Facades\File;
+use WPSPCORELITE\App\Support\Facades\File;
 use WPSPCORELITE\BaseInstances;
 
 class RouteMap extends BaseInstances {
