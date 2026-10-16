@@ -4,7 +4,6 @@ namespace WPSPCORELITE\App\Console\Commands;
 
 use WPSPCORELITE\App\Console\Command;
 use WPSPCORELITE\App\Support\Facades\File;
-use Illuminate\Support\Str;
 use WPSPCORELITE\App\Console\Traits\CommandsTrait;
 
 class MakeThemeTemplateCommand extends Command {
