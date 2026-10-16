@@ -58,9 +58,6 @@ abstract class BaseRewriteFrontPage extends BaseInstances {
 		$path     = $this->path ?? $path;
 		$fullPath = $this->fullPath ?? $fullPath;
 
-		// Loại bỏ dấu / ở đầu, vì rewrite rule sẽ lỗi khi regex bắt đầu bằng dấu /.
-		$fullPath = ltrim($fullPath, '/\\');
-
 		/**
 		 * Chuẩn hóa regex path
 		 * - luôn có ^ ở đầu
@@ -68,9 +65,10 @@ abstract class BaseRewriteFrontPage extends BaseInstances {
 		 */
 		$regexPrefix = '^';
 		$regexSuffix = '$';
-		$regexPath   = $this->funcs->_regexPath($fullPath);
-		$regexPath   = !str_starts_with($regexPath, $regexPrefix) ? $regexPrefix . $regexPath : $regexPath;
-		$regexPath   = !str_ends_with($regexPath, $regexSuffix) ? $regexPath . $regexSuffix : $regexPath;
+
+		$regexPath = $this->funcs->_regexPath($fullPath);
+		$regexPath = !str_starts_with($regexPath, $regexPrefix) ? $regexPrefix . $regexPath : $regexPath;
+		$regexPath = !str_ends_with($regexPath, $regexSuffix) ? $regexPath . $regexSuffix : $regexPath;
 
 		$fullPathEx = !str_starts_with($fullPath, $regexPrefix) ? $regexPrefix . $fullPath : $fullPath;
 		$fullPathEx = !str_ends_with($fullPathEx, $regexSuffix) ? $fullPathEx . $regexSuffix : $fullPathEx;
@@ -113,7 +111,7 @@ abstract class BaseRewriteFrontPage extends BaseInstances {
 			/**
 			 * Lấy request path hiện tại
 			 */
-			$requestPath = ltrim($this->request->getRequestUri(), '/\\');
+			$requestPath = $this->request->getRequestUri();
 
 			/**
 			 * Nếu URL hiện tại không match regex → bỏ qua
