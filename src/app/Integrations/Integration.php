@@ -2,7 +2,6 @@
 
 namespace WPSPCORELITE\App\Integrations;
 
-use Illuminate\Contracts\Container\BindingResolutionException;
 use WPSPCORELITE\App\Routes\RouteTrait;
 use WPSPCORELITE\BaseInstances;
 
@@ -22,7 +21,6 @@ class Integration extends BaseInstances {
 	 * @param string $dirPath Đường dẫn tuyệt đối đến thư mục chứa các gói tích hợp
 	 *
 	 * @return void
-	 * @throws BindingResolutionException
 	 */
 	public function registerAllIntegrationPackages($dirPath) {
 		$allIntegrationPackageDirs = $this->funcs->_getAllDirsInDir($dirPath, 0);
