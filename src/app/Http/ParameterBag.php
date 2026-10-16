@@ -5,12 +5,16 @@ namespace WPSPCORELITE\App\Http;
 use ArrayIterator;
 use Countable;
 use IteratorAggregate;
+use Stringable;
 use Traversable;
 use UnexpectedValueException;
 
 /**
  * Symfony-style parameter container used for $request->query, ->request,
  * ->cookies, ->attributes and ->server.
+ *
+ * Getter có kiểu (getString/getInt/getBoolean...) ném UnexpectedValueException
+ * khi giá trị là mảng/object - như Symfony InputBag, thay vì "Array to string conversion".
  */
 class ParameterBag implements IteratorAggregate, Countable {
 
@@ -60,35 +64,67 @@ class ParameterBag implements IteratorAggregate, Countable {
 	}
 
 	public function getAlpha(string $key, string $default = ''): string {
-		return preg_replace('/[^[:alpha:]]/', '', (string)$this->get($key, $default));
+		return (string)preg_replace('/[^[:alpha:]]/', '', $this->getString($key, $default));
 	}
 
 	public function getAlnum(string $key, string $default = ''): string {
-		return preg_replace('/[^[:alnum:]]/', '', (string)$this->get($key, $default));
+		return (string)preg_replace('/[^[:alnum:]]/', '', $this->getString($key, $default));
 	}
 
 	public function getDigits(string $key, string $default = ''): string {
-		return preg_replace('/[^[:digit:]]/', '', (string)$this->get($key, $default));
+		return (string)preg_replace('/[^[:digit:]]/', '', $this->getString($key, $default));
 	}
 
 	public function getString(string $key, string $default = ''): string {
-		return (string)$this->get($key, $default);
+		$value = $this->get($key, $default);
+		if ($value === null) return $default;
+		if (!is_scalar($value) && !$value instanceof Stringable) {
+			throw new UnexpectedValueException(sprintf('Parameter value "%s" cannot be converted to "string".', $key));
+		}
+		return (string)$value;
 	}
 
 	public function getInt(string $key, int $default = 0): int {
-		return (int)$this->get($key, $default);
+		$value = $this->get($key, $default);
+		if ($value === null || $value === '') return $default;
+		if (!is_scalar($value)) {
+			throw new UnexpectedValueException(sprintf('Parameter value "%s" cannot be converted to "int".', $key));
+		}
+		return (int)$value;
+	}
+
+	public function getFloat(string $key, float $default = 0.0): float {
+		$value = $this->get($key, $default);
+		if ($value === null || $value === '') return $default;
+		if (!is_scalar($value)) {
+			throw new UnexpectedValueException(sprintf('Parameter value "%s" cannot be converted to "float".', $key));
+		}
+		return (float)$value;
 	}
 
 	public function getBoolean(string $key, bool $default = false): bool {
-		return $this->filter($key, $default, FILTER_VALIDATE_BOOLEAN);
+		$value = $this->get($key, $default);
+		if (!is_scalar($value) && $value !== null) {
+			throw new UnexpectedValueException(sprintf('Parameter value "%s" cannot be converted to "bool".', $key));
+		}
+		return filter_var($value ?? $default, FILTER_VALIDATE_BOOLEAN);
 	}
 
+	/**
+	 * @template T of \BackedEnum
+	 * @param class-string<T> $class
+	 * @return ?T
+	 */
 	public function getEnum(string $key, string $class, ?\BackedEnum $default = null): ?\BackedEnum {
 		$value = $this->get($key);
-		if ($value === null || !function_exists('enum_exists') || !enum_exists($class) || !method_exists($class, 'tryFrom')) {
+		if ($value === null || !is_scalar($value) || !is_subclass_of($class, \BackedEnum::class)) return $default;
+
+		try {
+			return $class::tryFrom($value) ?? $default;
+		}
+		catch (\TypeError|\ValueError) {
 			return $default;
 		}
-		return $class::tryFrom($value) ?? $default;
 	}
 
 	public function filter(string $key, mixed $default = null, int $filter = FILTER_DEFAULT, array|int $options = []): mixed {
@@ -107,4 +143,5 @@ class ParameterBag implements IteratorAggregate, Countable {
 	public function count(): int {
 		return count($this->parameters);
 	}
+
 }

@@ -27,6 +27,15 @@ class UploadedFile extends SplFileInfo {
 		'application/vnd.openxmlformats-officedocument.wordprocessingml.document'   => 'docx',
 		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'         => 'xlsx',
 		'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'pptx',
+		'image/jpg'                                                                 => 'jpg', 'image/pjpeg' => 'jpg', 'image/heif' => 'heif', 'image/jxl' => 'jxl',
+		'video/mpeg'                                                                => 'mpeg', 'video/x-matroska' => 'mkv', 'video/3gpp' => '3gp', 'video/ogg' => 'ogv',
+		'audio/mp4'                                                                 => 'm4a', 'audio/aac' => 'aac', 'audio/flac' => 'flac', 'audio/webm' => 'weba', 'audio/x-m4a' => 'm4a',
+		'application/x-zip-compressed'                                              => 'zip', 'application/vnd.rar' => 'rar', 'application/x-bzip2' => 'bz2', 'application/x-xz' => 'xz',
+		'application/rtf'                                                           => 'rtf', 'text/rtf' => 'rtf', 'text/markdown' => 'md', 'text/javascript' => 'js', 'application/javascript' => 'js',
+		'application/vnd.oasis.opendocument.text'                                   => 'odt', 'application/vnd.oasis.opendocument.spreadsheet' => 'ods',
+		'application/vnd.oasis.opendocument.presentation'                           => 'odp', 'application/epub+zip' => 'epub',
+		'font/woff'                                                                 => 'woff', 'font/woff2' => 'woff2', 'font/ttf' => 'ttf', 'font/otf' => 'otf',
+		'application/wasm'                                                          => 'wasm', 'application/x-yaml' => 'yaml', 'application/sql' => 'sql',
 	];
 
 	protected ?string $detectedMime = null;
@@ -38,9 +47,11 @@ class UploadedFile extends SplFileInfo {
 		protected ?string $mimeType = null,
 		protected int $error = UPLOAD_ERR_OK,
 		protected int $size = 0,
-		protected bool $test = false
+		protected bool $test = false,
+		protected ?string $originalPath = null
 	) {
 		parent::__construct($path);
+		$this->originalPath = static::normalizeClientPath($originalPath ?? $originalName);
 		$this->originalName = static::sanitizeName($originalName);
 	}
 
@@ -54,6 +65,12 @@ class UploadedFile extends SplFileInfo {
 		$path = tempnam(sys_get_temp_dir(), 'upl');
 		file_put_contents($path, $content);
 		return static::createFromPath($path, $name);
+	}
+
+	/** full_path (PHP 8.1+, upload cả thư mục): chuẩn hoá "/" và loại bỏ "..". */
+	protected static function normalizeClientPath(string $path): string {
+		$parts = array_filter(explode('/', str_replace('\\', '/', $path)), fn($p) => $p !== '' && $p !== '.' && $p !== '..');
+		return implode('/', $parts);
 	}
 
 	protected static function sanitizeName(string $name): string {
@@ -77,8 +94,9 @@ class UploadedFile extends SplFileInfo {
 		return $this->originalName;
 	}
 
+	/** Đường dẫn tương đối phía client khi upload thư mục (full_path), mặc định = tên file. */
 	public function getClientOriginalPath(): string {
-		return $this->originalName;
+		return $this->originalPath ?: $this->originalName;
 	}
 
 	public function getClientOriginalExtension(): string {
@@ -300,6 +318,11 @@ class UploadedFile extends SplFileInfo {
 	protected function newFrom(string $target): static {
 		clearstatcache(true, $target);
 		return new static($target, basename($target), $this->mimeType, UPLOAD_ERR_OK, (int)filesize($target), true);
+	}
+
+	/** Đăng ký thêm ánh xạ MIME => extension. */
+	public static function addMimeExtensions(array $map): void {
+		static::$mimeExtensions = array_replace(static::$mimeExtensions, $map);
 	}
 
 }
