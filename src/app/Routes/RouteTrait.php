@@ -11,7 +11,10 @@ namespace WPSPCORELITE\App\Routes;
  * - Kiểm tra response         → duck-typing (getStatusCode / get_status / status).
  * - Trả lỗi JSON / HTML       → wp_send_json() / wp_die().
  * - Request                   → $this->request → container → \WPSPCORELITE\App\Http\Request::capture().
- * - Throttle                  → liteThrottle(): object cache (atomic) nếu có, ngược lại transient.
+ * - Throttle                  → ThrottleRequests + RateLimiter ('rate.limiter') của plugin, giống WPSPCORE:
+ *                               'throttle:60,1', 'throttle:30rpm' (named limiter khai báo bằng RateLimiter::for()),
+ *                               ThrottleRequests::using('30rpm'), ThrottleRequests::with(60, 1).
+ *                               Bộ đếm nằm trong cache của plugin => không bao giờ đếm chung với plugin khác.
  * - Container / Facade Lite   → gọi qua method_exists, thiếu method nào thì bỏ qua bước đó.
  * - Không có Eloquent model binding (Lite không có ORM).
  */
@@ -80,7 +83,7 @@ trait RouteTrait {
 	 * - Closure                       → function($request, $next, $args)
 	 * - ClassName::class
 	 * - [ClassName::class, 'method']
-	 * - 'throttle:60,1' / ['throttle:api']
+	 * - 'throttle:60,1' / 'throttle:30rpm' / ['throttle:api'] / ThrottleRequests::using('api')
 	 *
 	 * Giá trị trả về của middleware:
 	 *
@@ -194,17 +197,36 @@ trait RouteTrait {
 		}
 
 		if (is_array($mw) && isset($mw[0]) && is_string($mw[0])) {
-			if (str_starts_with($mw[0], 'throttle')) {
-				return ['type' => 'throttle', 'value' => $mw[0], 'args' => $args];
+			if ($throttle = $this->throttleSignature($mw[0])) {
+				return ['type' => 'throttle', 'value' => $throttle, 'args' => $args];
 			}
 			return ['type' => 'class', 'class' => $mw[0], 'method' => $mw[1] ?? 'handle', 'args' => $args];
 		}
 
 		if (is_string($mw)) {
-			if (str_starts_with($mw, 'throttle')) {
-				return ['type' => 'throttle', 'value' => $mw, 'args' => $args];
+			if ($throttle = $this->throttleSignature($mw)) {
+				return ['type' => 'throttle', 'value' => $throttle, 'args' => $args];
 			}
 			return ['type' => 'class', 'class' => $mw, 'method' => 'handle', 'args' => $args];
+		}
+
+		return null;
+	}
+
+	/**
+	 * 'throttle', 'throttle:60,1', 'throttle:30rpm' → giữ nguyên.\
+	 * ThrottleRequests::using('30rpm') / ThrottleRequests::with(60, 1) (dạng "Class:tham số") → 'throttle:30rpm'.\
+	 * Không phải throttle → null.
+	 */
+	protected function throttleSignature(string $mw): ?string {
+		if ($mw === 'throttle' || str_starts_with($mw, 'throttle:')) {
+			return $mw;
+		}
+
+		$parts = explode(':', $mw, 2);
+
+		if (is_a(ltrim($parts[0], '\\'), \WPSPCORELITE\App\Http\Middleware\ThrottleRequests::class, true)) {
+			return isset($parts[1]) && $parts[1] !== '' ? 'throttle:' . $parts[1] : 'throttle';
 		}
 
 		return null;
@@ -286,7 +308,16 @@ trait RouteTrait {
 	}
 
 	/**
-	 * Chạy throttle. Mỗi signature (vd: 'throttle:60,1') chỉ đếm đúng 1 lần / request.
+	 * Chạy throttle giống WPSPCORE: ThrottleRequests + RateLimiter của plugin.\
+	 * Mỗi signature (vd: 'throttle:60,1', 'throttle:30rpm') chỉ đếm đúng 1 lần / request.
+	 *
+	 * - 'throttle'               → 60 request / phút
+	 * - 'throttle:60,1'          → 60 request / 1 phút
+	 * - 'throttle:100,60,export' → 100 request / giờ, bộ đếm riêng "export"
+	 * - 'throttle:10|60,1'       → khách 10, user đăng nhập 60 / phút
+	 * - 'throttle:30rpm'         → named limiter: RateLimiter::for('30rpm', fn($request) => Limit::perMinute(30))
+	 *
+	 * Vượt giới hạn → dừng request với 429 (JSON nếu client muốn JSON, ngược lại wp_die) + Retry-After / X-RateLimit-*.
 	 */
 	protected function runThrottleMiddleware(string $value, $request): bool {
 		$memoKey = '_wpsp_throttle.' . $value;
@@ -297,10 +328,28 @@ trait RouteTrait {
 		}
 
 		$parts      = explode(':', $value, 2);
-		$parameters = (isset($parts[1]) && $parts[1] !== '') ? explode(',', $parts[1]) : [];
+		$parameters = (isset($parts[1]) && $parts[1] !== '') ? array_map('trim', explode(',', $parts[1])) : [];
+		$passed     = false;
 
 		try {
-			$passed = $this->liteThrottle($request, $value, $parameters);
+			$limiter    = $this->throttleRateLimiter();
+			$middleware = new \WPSPCORELITE\App\Http\Middleware\ThrottleRequests($limiter);
+
+			$this->warnUnknownNamedLimiter($limiter, $parameters);
+
+			$response = $middleware->handle($request, function() {
+				return $this->makeNextResponse();
+			}, ...$parameters);
+
+			// X-RateLimit-* được gắn vào response giả của $next → gửi ra client.
+			if (is_object($response) && method_exists($response, 'get_headers')) {
+				$this->sendHeaders((array)$response->get_headers());
+			}
+
+			$passed = true;
+		}
+		catch (\WPSPCORELITE\App\Http\Exceptions\ThrottleRequestsException $e) {
+			$this->respondTooManyRequests($e);
 		}
 		catch (\Throwable $e) {
 			$this->abortWithStatus($this->safeErrorMessage($e), 500, '500 - Internal Server Error.');
@@ -312,78 +361,83 @@ trait RouteTrait {
 	}
 
 	/**
-	 * Rate limit kiểu Laravel: throttle:{maxAttempts},{decayMinutes},{prefix}
-	 *
-	 * Ví dụ: 'throttle:60,1' → tối đa 60 request / 1 phút / user (hoặc IP nếu chưa đăng nhập).
-	 *
-	 * - Có persistent object cache (Redis/Memcached) → wp_cache_add + wp_cache_incr (atomic).
-	 * - Không có → transient (không atomic, đủ cho chống spam cơ bản).
-	 *
-	 * Vượt giới hạn → abort 429 kèm Retry-After / X-RateLimit-*.
+	 * RateLimiter của plugin: binding 'rate.limiter' của Application (chứa named limiters khai báo trong
+	 * AppServiceProvider). Không có binding → tạo từ cache của plugin.
 	 */
-	protected function liteThrottle($request, string $signature, array $parameters = []): bool {
-		$maxAttempts  = (isset($parameters[0]) && is_numeric($parameters[0])) ? max(1, (int)$parameters[0]) : 60;
-		$decayMinutes = (isset($parameters[1]) && is_numeric($parameters[1])) ? (float)$parameters[1] : 1;
-		$prefix       = $parameters[2] ?? '';
-		$decaySeconds = max(1, (int)round($decayMinutes * 60));
+	protected function throttleRateLimiter(): \WPSPCORELITE\App\Cache\RateLimiter {
+		$app = $this->currentApp();
 
-		$key = 'wpsp_thr_' . md5($prefix . '|' . $signature . '|' . $this->throttleIdentity($request));
-		$now = time();
-
-		if (function_exists('wp_using_ext_object_cache') && wp_using_ext_object_cache()) {
-			$group = 'wpsp_throttle';
-
-			// add() chỉ ghi khi key chưa tồn tại → mở cửa sổ mới kèm TTL.
-			wp_cache_add($key . ':reset', $now + $decaySeconds, $group, $decaySeconds);
-			wp_cache_add($key, 0, $group, $decaySeconds);
-
-			$count = (int)wp_cache_incr($key, 1, $group);
-			$reset = (int)(wp_cache_get($key . ':reset', $group) ?: $now + $decaySeconds);
-		}
-		else {
-			$data = get_transient($key);
-
-			if (!is_array($data) || ($data['reset'] ?? 0) <= $now) {
-				$data = ['count' => 0, 'reset' => $now + $decaySeconds];
+		if ($app && method_exists($app, 'bound') && method_exists($app, 'make')) {
+			if ($app->bound('rate.limiter')) {
+				return $app->make('rate.limiter');
 			}
 
-			$data['count']++;
-			set_transient($key, $data, max(1, $data['reset'] - $now));
-
-			$count = $data['count'];
-			$reset = $data['reset'];
+			if ($app->bound('cache')) {
+				$cache = $app->make('cache');
+				return new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
+			}
 		}
 
-		if ($count > $maxAttempts) {
-			$this->abortWithStatus('Too Many Attempts.', 429, '429 - Too Many Requests.', [
-				'Retry-After'           => max(1, $reset - $now),
-				'X-RateLimit-Limit'     => $maxAttempts,
-				'X-RateLimit-Remaining' => 0,
-				'X-RateLimit-Reset'     => $reset,
-			]);
+		// Không có container: cache của plugin theo mainPath (prefix = tên thư mục plugin).
+		static $fallback = [];
+
+		$mainPath = property_exists($this, 'mainPath') ? $this->mainPath : null;
+		$key      = (string)$mainPath;
+
+		if (!isset($fallback[$key])) {
+			$cache          = new \WPSPCORELITE\App\Cache\Cache($mainPath);
+			$fallback[$key] = new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
 		}
 
-		$this->sendHeaders([
-			'X-RateLimit-Limit'     => $maxAttempts,
-			'X-RateLimit-Remaining' => max(0, $maxAttempts - $count),
-		]);
-
-		return true;
+		return $fallback[$key];
 	}
 
 	/**
-	 * Định danh cho throttle: user đã đăng nhập → user id, ngược lại → IP.
+	 * 'throttle:30rpm' mà chưa khai báo RateLimiter::for('30rpm') → giống Laravel, ThrottleRequests hiểu
+	 * thành (int)'30rpm' = 30 / phút. Báo cho dev biết (WP_DEBUG) thay vì im lặng.
 	 */
-	protected function throttleIdentity($request): string {
-		$userId = function_exists('get_current_user_id') ? get_current_user_id() : 0;
+	protected function warnUnknownNamedLimiter(\WPSPCORELITE\App\Cache\RateLimiter $limiter, array $parameters): void {
+		$name = $parameters[0] ?? null;
 
-		if ($userId) {
-			return 'user:' . $userId;
+		if ($name === null || is_numeric($name) || str_contains($name, '|') || $limiter->limiter($name) !== null) {
+			return;
 		}
 
-		$ip = ($request && method_exists($request, 'ip')) ? $request->ip() : null;
+		if (function_exists('_doing_it_wrong')) {
+			_doing_it_wrong(
+				'throttle:' . esc_html($name),
+				sprintf('Rate limiter [%s] chưa được khai báo. Hãy gọi RateLimiter::for(\'%s\', ...) trong AppServiceProvider::boot().', esc_html($name), esc_html($name)),
+				''
+			);
+		}
+	}
 
-		return 'ip:' . ($ip ?: ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+	/**
+	 * Trả 429. Limit::response() có thể trả về:
+	 * - \WP_HTTP_Response / \WP_REST_Response / object có get_status() → gửi đúng status, header, data.
+	 * - chuỗi → dùng làm thông báo lỗi.
+	 * - mảng → JSON.
+	 * Không có response riêng → thông báo mặc định (JSON hoặc wp_die).
+	 */
+	protected function respondTooManyRequests(\WPSPCORELITE\App\Http\Exceptions\ThrottleRequestsException $e): void {
+		$custom  = $e->getResponse();
+		$headers = $e->getHeaders();
+
+		if (is_object($custom) && method_exists($custom, 'get_status')) {
+			$this->sendHeaders(array_merge($headers, method_exists($custom, 'get_headers') ? (array)$custom->get_headers() : []));
+			wp_send_json(method_exists($custom, 'get_data') ? $custom->get_data() : null, (int)$custom->get_status());
+			exit;
+		}
+
+		if (is_array($custom)) {
+			$this->sendHeaders($headers);
+			wp_send_json($custom, 429);
+			exit;
+		}
+
+		$message = is_string($custom) && $custom !== '' ? $custom : $e->getMessage();
+
+		$this->abortWithStatus($message, 429, '429 - Too Many Requests.', $headers);
 	}
 
 	/*
@@ -518,7 +572,10 @@ trait RouteTrait {
 	 * Gọi 2 tham số → đọc (null nếu chưa có). Gọi 3 tham số → ghi.
 	 */
 	protected function requestMemo($request, string $key, ?bool $value = null): ?bool {
-		static $store = [];
+		// WeakMap: mỗi request object có ngăn nhớ riêng, tự xoá khi request bị giải phóng
+		// (spl_object_id có thể bị tái sử dụng cho request mới => dùng nhầm kết quả throttle cũ).
+		static $store = null, $global = [];
+		$store ??= new \WeakMap();
 
 		$write = func_num_args() >= 3;
 		$bag   = ($request && isset($request->attributes) && is_object($request->attributes)) ? $request->attributes : null;
@@ -531,13 +588,22 @@ trait RouteTrait {
 			return $bag->has($key) ? (bool)$bag->get($key) : null;
 		}
 
-		$scope = $request ? spl_object_id($request) : 0;
-
-		if ($write) {
-			return $store[$scope][$key] = $value;
+		if (!is_object($request)) {
+			if ($write) {
+				return $global[$key] = $value;
+			}
+			return $global[$key] ?? null;
 		}
 
-		return $store[$scope][$key] ?? null;
+		$memo = $store[$request] ?? [];
+
+		if ($write) {
+			$memo[$key]       = $value;
+			$store[$request]  = $memo;
+			return $value;
+		}
+
+		return $memo[$key] ?? null;
 	}
 
 	/*
