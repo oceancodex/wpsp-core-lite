@@ -38,7 +38,9 @@ Plugin được tạo từ `wpsp-lite` bằng `composer create-project`, và đ�
 composer create-project wpsp-lite plugin-cua-toi
 ```
 
-Plugin mới đã có sẵn `app/Widen/Cache/Cache.php` (Cache của plugin, đọc `config/cache.php`) và `app/Widen/Support/Facades/Cache.php` (facade), với namespace của plugin. Bạn không cần viết thêm class nào; việc duy nhất là chỉnh `config/cache.php`, quan trọng nhất là **`prefix`**: đặt một giá trị riêng cho plugin, ví dụ slug của nó.
+Plugin mới đã có sẵn `app/Widen/Cache/Cache.php` (Cache của plugin, đọc `config/cache.php`) và `app/Widen/Support/Facades/Cache.php` (facade), với namespace của plugin. Bạn không cần viết thêm class nào. `Application` của plugin tự bind `cache` (CacheManager) và `cache.store` (store mặc định) từ `config/cache.php`, và facade dùng chính binding đó.
+
+**Cách ly giữa các plugin là tự động:** khi `prefix` để `null` (mặc định của template), prefix được lấy theo tên thư mục plugin, ví dụ `plugins/plugin-cua-toi` → `plugin_cua_toi_`, `plugins/wpsp-lite` → `wpsp_lite_`. Một site WordPress không thể có hai plugin trùng thư mục, nên mọi plugin tạo từ cùng template vẫn có key, lock và thư mục cache riêng. Chỉ đặt `prefix` khi muốn cố định một giá trị.
 
 **Config** (`plugin-cua-toi/config/cache.php`):
 
@@ -57,7 +59,9 @@ return [
 		'null'      => ['driver' => 'null'],
 	],
 
-	'prefix' => 'plugin_a_',
+	'prefix' => null,      // null = theo tên thư mục plugin
+
+	'class' => \WPSPLITE\App\Widen\Cache\Cache::class,   // class được bind làm 'cache'
 
 	'events' => false,
 
@@ -68,8 +72,11 @@ return [
 | --- | --- | --- |
 | `default` | tên một store trong `stores` | Store dùng khi gọi `Cache::get()` không chỉ định store. Không có chế độ `auto`. |
 | `stores` | mảng `tên => ['driver' => ..., ...]` | Tên tự đặt; một driver có thể dùng cho nhiều store (ví dụ `phpfastcache` cho cả `files` và `redis`). |
-| `prefix` | chuỗi duy nhất cho plugin | Nên dùng slug plugin. Ký tự ngoài `A-Z a-z 0-9 _ -` bị bỏ. |
+| `prefix` | `null` hoặc chuỗi | `null` = theo tên thư mục plugin (khuyến nghị). Ký tự ngoài `A-Z a-z 0-9 _ -` bị bỏ. |
+| `class` | tên class | Class `Application` bind làm `'cache'`; phải kế thừa `WPSPCORELITE\App\Cache\Cache`. Bỏ trống = class core. |
 | `events` | `false` / `true` / tên hook | Xem mục 11. |
+| `limiter` | `null` hoặc tên store | Store giữ bộ đếm của RateLimiter (`null` = `default`). Xem `RATE_LIMITER.md`. |
+| `limiter_class` | tên class | Class `Application` bind làm `'rate.limiter'`; phải kế thừa `WPSPCORELITE\App\Cache\RateLimiter`. |
 
 Tuỳ chọn riêng của từng store:
 
@@ -110,6 +117,17 @@ Cache::memo('file')->get('key');
 ```
 
 `Cache::store($name)` trả về một `Repository`; mọi ví dụ dạng `Cache::xxx()` trong tài liệu này đều dùng được trên `Cache::store('...')->xxx()` và `Cache::tags(...)->xxx()`.
+
+**Lấy từ container (Application của plugin):**
+
+```php
+$cache = $app->make('cache');                                   // CacheManager của plugin
+$cache = $app->make(\WPSPCORELITE\App\Cache\CacheManager::class); // cùng object (alias)
+$store = $app->make('cache.store');                             // Repository của store mặc định
+$store = $app->make(\WPSPCORELITE\App\Cache\Repository::class);   // cùng object (alias)
+```
+
+Có thể type-hint `CacheManager`, `Contracts\Factory`, `Repository` hoặc `Contracts\Repository` trong constructor của service hay controller để container tự inject.
 
 **Lấy object để truyền đi hoặc dùng không qua facade:**
 

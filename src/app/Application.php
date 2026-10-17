@@ -12,6 +12,7 @@ use WPSPCORELITE\App\Cache\Cache as CacheCore;
 use WPSPCORELITE\App\Cache\CacheManager;
 use WPSPCORELITE\App\Cache\Contracts\Factory as CacheFactory;
 use WPSPCORELITE\App\Cache\Contracts\Repository as CacheRepositoryContract;
+use WPSPCORELITE\App\Cache\RateLimiter;
 use WPSPCORELITE\App\Cache\Repository as CacheRepository;
 use WPSPCORELITE\App\Config\LoadConfiguration;
 use WPSPCORELITE\App\Config\Repository as ConfigRepository;
@@ -23,7 +24,7 @@ use WPSPCORELITE\App\Support\Facades\Facade;
  * Application - mô phỏng Illuminate\Foundation\Application bằng PHP thuần.
  *
  * - Container đầy đủ (kế thừa Container).
- * - Bindings sẵn có: 'app', 'request', 'files', 'config', 'cache', 'cache.store', 'commands', 'path.*'.
+ * - Bindings sẵn có: 'app', 'request', 'files', 'config', 'cache', 'cache.store', 'rate.limiter', 'commands', 'path.*'.
  * - 'cache' = CacheManager riêng của Application này (mỗi plugin một Application => một cache riêng),
  *   config từ config('cache'), prefix mặc định = tên thư mục plugin (xem createCacheManager()).
  * - 'config' nạp lười (lần make đầu tiên) toàn bộ file trong configPath() (mặc định <basePath>/config).
@@ -204,6 +205,11 @@ class Application extends Container {
 			return $app->make('cache')->driver();
 		});
 
+		// Giống Laravel: RateLimiter dùng store config('cache.limiter') của cache plugin này.
+		$this->singleton('rate.limiter', function($app) {
+			return $app->createRateLimiter();
+		});
+
 		$this->singleton('commands', function($app) {
 			return new Commands($app);
 		});
@@ -240,7 +246,8 @@ class Application extends Container {
 			'files'       => [Filesystem::class],
 			'config'      => [ConfigRepository::class],
 			'cache'       => [CacheManager::class, CacheCore::class, CacheFactory::class],
-			'cache.store' => [CacheRepository::class, CacheRepositoryContract::class],
+			'cache.store'  => [CacheRepository::class, CacheRepositoryContract::class],
+			'rate.limiter' => [RateLimiter::class],
 			'commands'    => [Commands::class],
 		];
 
@@ -281,6 +288,25 @@ class Application extends Container {
 		}
 
 		return new $class($this->basePath(), null, null, ['config' => $config]);
+	}
+
+	/**
+	 * Tạo RateLimiter cho Application này.
+	 *
+	 * - Store: config('cache.limiter') (null = store mặc định của cache plugin). Bộ đếm mang prefix cache
+	 *   của plugin => hai plugin dùng cùng key ('login:...') vẫn đếm riêng.
+	 * - Class: config('cache.limiter_class') (tuỳ chọn), phải kế thừa \WPSPCORELITE\App\Cache\RateLimiter.
+	 * - Named limiters (RateLimiter::for()) thuộc về instance này => cũng riêng từng plugin.
+	 */
+	protected function createRateLimiter() {
+		$store = $this->configValue('cache.limiter');
+		$class = $this->configValue('cache.limiter_class') ?? RateLimiter::class;
+
+		if (!is_string($class) || !is_a($class, RateLimiter::class, true)) {
+			$class = RateLimiter::class;
+		}
+
+		return new $class($this->make('cache')->store(is_string($store) && $store !== '' ? $store : null));
 	}
 
 	/*
