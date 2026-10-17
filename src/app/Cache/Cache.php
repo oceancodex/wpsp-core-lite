@@ -7,12 +7,14 @@ namespace WPSPCORELITE\App\Cache;
  *
  * Constructor follows the WPSPCORELITE instance convention (mainPath, rootNamespace, prefixEnv, extraParams).
  * Config is read, in this order:
- *   1. $extraParams['config'] (array)
+ *   1. $extraParams['config'] (array, e.g. config('cache') given by the Application binding)
  *   2. {mainPath}/config/cache.php (Laravel-style file returning an array)
- *   3. defaults (driver "transient", prefix "wpsp_lite_")
+ *   3. defaults (driver "transient")
  *
- * Each plugin extends this class (e.g. WPSPLITE\App\Widen\Cache\Cache), loads its own config/cache.php
- * and therefore has its own prefix, stores and lock names.
+ * Prefix: 'prefix' from the config; when it is empty or missing, it is built from the plugin folder name
+ * (plugins/wpsp-lite => "wpsp_lite_", plugins/plugin-cua-toi => "plugin_cua_toi_"). A WordPress site
+ * cannot have two plugins in the same folder, so plugins never share cache keys, locks or folders,
+ * even when every plugin was created from the same wpsp-lite template.
  */
 class Cache extends CacheManager {
 
@@ -78,21 +80,41 @@ class Cache extends CacheManager {
 	 */
 
 	protected function loadConfig(): array {
+		$config = [];
+
 		if (isset($this->cacheExtraParams['config']) && is_array($this->cacheExtraParams['config'])) {
-			return $this->cacheExtraParams['config'];
+			$config = $this->cacheExtraParams['config'];
 		}
+		else {
+			$path = $this->getConfigPath();
 
-		$path = $this->getConfigPath();
-
-		if ($path !== null && is_file($path)) {
-			$config = require $path;
-
-			if (is_array($config)) {
-				return $config;
+			if ($path !== null && is_file($path)) {
+				$loaded = require $path;
+				$config = is_array($loaded) ? $loaded : [];
 			}
 		}
 
-		return [];
+		if (!isset($config['prefix']) || trim((string) $config['prefix']) === '') {
+			$config['prefix'] = $this->defaultPrefix();
+		}
+
+		return $config;
+	}
+
+	/**
+	 * Prefix used when the config has none: the plugin folder name ("plugin-cua-toi" => "plugin_cua_toi_"),
+	 * then the env prefix ("PLUGINA_" => "plugina_"), then "wpsp_lite_".
+	 */
+	public function defaultPrefix(): string {
+		foreach ([$this->cacheMainPath !== null ? basename(rtrim($this->cacheMainPath, '/\\')) : null, $this->cachePrefixEnv] as $source) {
+			$slug = trim(strtolower((string) preg_replace('/[^A-Za-z0-9]+/', '_', (string) $source)), '_');
+
+			if ($slug !== '') {
+				return $slug . '_';
+			}
+		}
+
+		return CachePrefix::DEFAULT_PREFIX;
 	}
 
 }

@@ -8,6 +8,11 @@
 
 namespace WPSPCORELITE\App;
 
+use WPSPCORELITE\App\Cache\Cache as CacheCore;
+use WPSPCORELITE\App\Cache\CacheManager;
+use WPSPCORELITE\App\Cache\Contracts\Factory as CacheFactory;
+use WPSPCORELITE\App\Cache\Contracts\Repository as CacheRepositoryContract;
+use WPSPCORELITE\App\Cache\Repository as CacheRepository;
 use WPSPCORELITE\App\Config\LoadConfiguration;
 use WPSPCORELITE\App\Config\Repository as ConfigRepository;
 use WPSPCORELITE\App\Filesystem\Filesystem;
@@ -18,7 +23,9 @@ use WPSPCORELITE\App\Support\Facades\Facade;
  * Application - mô phỏng Illuminate\Foundation\Application bằng PHP thuần.
  *
  * - Container đầy đủ (kế thừa Container).
- * - Bindings sẵn có: 'app', 'request', 'files', 'config', 'commands', 'path.*'.
+ * - Bindings sẵn có: 'app', 'request', 'files', 'config', 'cache', 'cache.store', 'commands', 'path.*'.
+ * - 'cache' = CacheManager riêng của Application này (mỗi plugin một Application => một cache riêng),
+ *   config từ config('cache'), prefix mặc định = tên thư mục plugin (xem createCacheManager()).
  * - 'config' nạp lười (lần make đầu tiên) toàn bộ file trong configPath() (mặc định <basePath>/config).
  * - Paths, environment, locale, service providers (kể cả deferred), boot/terminate.
  * - Cấu hình fluent: Application::configure($basePath)->withProviders([...])->withSingletons([...])->create().
@@ -188,6 +195,15 @@ class Application extends Container {
 			return (new LoadConfiguration())->load($app);
 		});
 
+		// Giống Illuminate\Cache\CacheServiceProvider: 'cache' (manager) + 'cache.store' (store mặc định).
+		$this->singleton('cache', function($app) {
+			return $app->createCacheManager();
+		});
+
+		$this->singleton('cache.store', function($app) {
+			return $app->make('cache')->driver();
+		});
+
 		$this->singleton('commands', function($app) {
 			return new Commands($app);
 		});
@@ -219,11 +235,13 @@ class Application extends Container {
 
 	protected function registerCoreContainerAliases() {
 		$aliases = [
-			'app'      => array_unique([self::class, static::class, Container::class]),
-			'request'  => [WPSPCORE_Http_Request::class],
-			'files'    => [Filesystem::class],
-			'config'   => [ConfigRepository::class],
-			'commands' => [Commands::class],
+			'app'         => array_unique([self::class, static::class, Container::class]),
+			'request'     => [WPSPCORE_Http_Request::class],
+			'files'       => [Filesystem::class],
+			'config'      => [ConfigRepository::class],
+			'cache'       => [CacheManager::class, CacheCore::class, CacheFactory::class],
+			'cache.store' => [CacheRepository::class, CacheRepositoryContract::class],
+			'commands'    => [Commands::class],
 		];
 
 		foreach ($aliases as $key => $list) {
@@ -231,6 +249,38 @@ class Application extends Container {
 				$this->alias($key, $alias);
 			}
 		}
+	}
+
+	/*
+	 * ---
+	 * Cache.
+	 * ---
+	 */
+
+	/**
+	 * Tạo CacheManager cho Application này.
+	 *
+	 * - Config: config('cache') (file <configPath>/cache.php của plugin).
+	 * - 'class' trong config (tuỳ chọn): class Cache của plugin, vd \WPSPLITE\App\Widen\Cache\Cache::class;
+	 *   phải kế thừa \WPSPCORELITE\App\Cache\Cache.
+	 * - Không có 'prefix' => lấy theo tên thư mục plugin (basePath): plugins/plugin-cua-toi => "plugin_cua_toi_".
+	 *   Hai plugin trên cùng site không thể trùng thư mục => không bao giờ trùng key, lock, thư mục cache,
+	 *   kể cả khi cùng được tạo từ template wpsp-lite với cùng config/cache.php.
+	 *
+	 * Plugin muốn tự tạo cache: $app->singleton('cache', fn($app) => ...) trong provider của plugin.
+	 */
+	protected function createCacheManager() {
+		$config = $this->configValue('cache', []);
+		$config = is_array($config) ? $config : [];
+
+		$class = $config['class'] ?? CacheCore::class;
+		unset($config['class']);
+
+		if (!is_string($class) || !is_a($class, CacheCore::class, true)) {
+			$class = CacheCore::class;
+		}
+
+		return new $class($this->basePath(), null, null, ['config' => $config]);
 	}
 
 	/*
