@@ -15,6 +15,7 @@ Mọi ví dụ dùng namespace của template `WPSPLITE`. Plugin tạo bằng `c
 5. [Limit: mô tả một giới hạn](#5-limit-mô-tả-một-giới-hạn)
 6. [Named limiters](#6-named-limiters)
 7. [Middleware ThrottleRequests](#7-middleware-throttlerequests)
+   - [Dùng `throttle:` trong Route](#71-dùng-throttle-trong-route)
 8. [Trường hợp thực tế](#8-trường-hợp-thực-tế)
 9. [Tính atomic, giới hạn và lưu ý](#9-tính-atomic-giới-hạn-và-lưu-ý)
 10. [Tra cứu nhanh](#10-tra-cứu-nhanh)
@@ -338,7 +339,47 @@ $callback = RateLimiter::limiter('api');   // Closure hoặc null
 $names    = RateLimiter::limiters();       // ['api', 'uploads', 'admin']
 ```
 
-**Đăng ký ở đâu:** trong `boot()` của một service provider của plugin (giống `AppServiceProvider` của Laravel), hoặc trong hook `plugins_loaded` / `init`. Named limiter phải được đăng ký **trước** khi middleware hoặc code dùng đến nó.
+### Khai báo trong AppServiceProvider (giống Laravel)
+
+Named limiter khai báo trong `boot()` của `AppServiceProvider` của plugin, rồi dùng ở middleware route bằng `throttle:{tên}`:
+
+```php
+<?php
+
+namespace WPSPLITE\App\Providers;
+
+use WPSPCORELITE\App\Cache\RateLimiting\Limit;
+use WPSPCORELITE\App\Support\ServiceProvider;
+use WPSPLITE\App\Widen\Support\Facades\RateLimiter;
+
+class AppServiceProvider extends ServiceProvider {
+
+	public function boot() {
+		RateLimiter::for('30rpm', function ($request) {
+			return Limit::perMinute(30);
+		});
+
+		RateLimiter::for('api', function ($request) {
+			return get_current_user_id()
+				? Limit::perMinute(120)->by('user:' . get_current_user_id())
+				: Limit::perMinute(30)->by('ip:' . $request->ip());
+		});
+
+		RateLimiter::for('login', fn($request) => Limit::perMinutes(15, 5)->by($request->ip()));
+	}
+
+}
+```
+
+Cũng có thể gọi thẳng qua container thay vì facade: `$this->app->make('rate.limiter')->for('30rpm', ...)`. Hai cách cho cùng một object (singleton `rate.limiter` của plugin).
+
+Lưu ý:
+
+- `Limit::perMinute(30)` **không** gọi `by()` nghĩa là **một bộ đếm chung cho mọi người**: cả site chỉ được 30 request mỗi phút vào route đó. Muốn mỗi người dùng hay mỗi IP có 30 request riêng, hãy thêm `->by($request->ip())` hoặc `->by('user:' . get_current_user_id())`.
+- `$request` là request của framework (`WPSPCORELITE\App\Http\Request`), có `ip()`, `user()`, `getHost()`...
+- Named limiter chỉ thuộc về plugin khai báo nó. `throttle:30rpm` ở plugin khác sẽ không thấy limiter này.
+
+**Đăng ký ở đâu:** trong `boot()` của `AppServiceProvider` (như trên), hoặc trong hook `plugins_loaded` / `init`. Named limiter phải được đăng ký **trước** khi middleware hoặc code dùng đến nó.
 
 ---
 
@@ -395,6 +436,42 @@ X-RateLimit-Remaining: 59
 | `sendHeaders()` | gửi status 429 và header bằng `header()` của PHP |
 
 Handler lỗi của plugin nên bắt exception này và trả về mã 429.
+
+### 7.1 Dùng `throttle` trong Route
+
+`RouteTrait` hiểu middleware `throttle` giống WPSPCORE. Nó chạy `ThrottleRequests` với `rate.limiter` của plugin, nên named limiter khai báo trong `AppServiceProvider` dùng được ngay:
+
+```php
+use WPSPCORELITE\App\Http\Middleware\ThrottleRequests;
+
+Route::middleware([
+	['relation' => 'OR', 'throttle:30rpm', EditorCapability::class],
+	['relation' => 'AND', AdministratorCapability::class],
+])->get('\/test\/(?P<slug>[^\/\?]+)(?:\?(?P<queries>.*))?', [rewrite_demo::class, 'index'])->name('index');
+```
+
+| Cách viết | Ý nghĩa |
+| --- | --- |
+| `'throttle'` | 60 request / phút |
+| `'throttle:60,1'` | 60 request / 1 phút |
+| `'throttle:100,60,export'` | 100 request / giờ, bộ đếm riêng tên `export` |
+| `'throttle:10\|60,1'` | khách 10, user đã đăng nhập 60 request / phút |
+| `'throttle:30rpm'` | named limiter `30rpm` (khai báo bằng `RateLimiter::for('30rpm', ...)`) |
+| `ThrottleRequests::using('30rpm')` | giống `'throttle:30rpm'` |
+| `ThrottleRequests::with(60, 1)` | giống `'throttle:60,1'` |
+| `['throttle:30rpm']` | dạng mảng, giống dạng chuỗi |
+
+Hành vi:
+
+- **Mỗi request chỉ đếm một lần cho mỗi chữ ký throttle**, kể cả khi `isPassedMiddleware()` được gọi nhiều lần trong cùng request.
+- **Chưa vượt:** middleware PASS, và header `X-RateLimit-Limit`, `X-RateLimit-Remaining` được gửi về client.
+- **Vượt giới hạn:** request dừng ngay với mã 429, kèm `Retry-After`, `X-RateLimit-Reset`. Client muốn JSON (`_wantsJson()`) nhận JSON; ngược lại là trang `wp_die()`. Giống WPSPCORE, việc dừng xảy ra ngay cả khi throttle nằm trong block `OR`.
+- **`Limit::response()`** thay cho thông báo mặc định:
+  - trả `WP_REST_Response` / `WP_HTTP_Response`: được gửi đúng status, header và data;
+  - trả mảng: gửi JSON 429;
+  - trả chuỗi: dùng làm thông báo lỗi.
+- **`throttle:{tên}` chưa khai báo:** khi bật `WP_DEBUG` sẽ có cảnh báo `_doing_it_wrong`. Giống Laravel, tên khi đó bị hiểu thành số: `'30rpm'` → 30 lần mỗi phút, còn `'abc'` → 0, tức là chặn mọi request.
+- **Bộ đếm nằm trong cache của plugin:** cùng IP, cùng `throttle:60,1` ở hai plugin là hai bộ đếm riêng.
 
 ### Dùng trong WordPress REST API
 
@@ -711,6 +788,7 @@ add_action('admin_post_plugin_unlock_user', function () {
 | `RateLimiter::cleanRateLimiterKey($key)` | `string` | 4 |
 | `RateLimiter::getCache()` | Repository | 4 |
 | `RateLimiter::for($name, fn($request) => Limit\|Limit[]\|response)` | RateLimiter | 6 |
+| `Route::middleware([['throttle:30rpm']])` | middleware route | 7.1 |
 | `RateLimiter::limiter($name)` | `Closure\|null` | 6 |
 | `RateLimiter::limiters()` | tên các limiter | 6 |
 | `RateLimiter::getFacadeRoot()` / `swap($limiter)` | facade | 3 |
