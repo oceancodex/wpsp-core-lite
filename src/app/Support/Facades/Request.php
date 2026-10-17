@@ -5,8 +5,6 @@ namespace WPSPCORELITE\App\Support\Facades;
 use WPSPCORELITE\App\Http\Request as RequestCore;
 use WPSPCORELITE\BaseInstances;
 
-;
-
 /**
  * Facade cho 'request' - mô phỏng Illuminate\Support\Facades\Request.
  *
