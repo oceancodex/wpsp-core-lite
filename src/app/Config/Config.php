@@ -8,7 +8,6 @@
 
 namespace WPSPCORELITE\App\Config;
 
-use WPSPLITE\App\Widen\Traits\InstancesTrait;
 use Noodlehaus\AbstractConfig;
 use Noodlehaus\Config as NoodlehausConfig;
 use WPSPCORELITE\BaseInstances;
@@ -31,8 +30,6 @@ use WPSPCORELITE\BaseInstances;
  * Hỗ trợ .php, .json, .ini, .xml, .yml/.yaml (yaml cần symfony/yaml).
  */
 class Config extends BaseInstances implements \ArrayAccess {
-
-	use InstancesTrait;
 
 	/** @var AbstractConfig|null */
 	protected $repository = null;
