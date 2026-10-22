@@ -185,6 +185,10 @@ trait RouteTrait {
 	public function isPassedMiddleware($middlewares = [], $request = null, $args = []) {
 		$request = $request ?? $this->resolveCurrentRequest();
 
+		// Middleware gọi helper / facade (auth(), redirect(), session(), RateLimiter::...)
+		// → phải chạy trong đúng container của plugin này, không phải plugin chạy trước.
+		$this->bindContainerContext();
+
 		// Mỗi lần đánh giá bắt đầu sạch: bỏ response bị chặn của lần đánh giá trước.
 		$this->forgetBlockedMiddlewareResponse($request);
 
@@ -434,7 +438,7 @@ trait RouteTrait {
 	 * 429 (JSON nếu client muốn JSON, ngược lại wp_die) + Retry-After / X-RateLimit-*.
 	 */
 	protected function runThrottleMiddleware(string $value, $request): bool {
-		$memoKey = '_wpsp_throttle.' . $value;
+		$memoKey = '_' . $this->hookPrefix() . '_throttle.' . $value;
 		$cached  = $this->requestStash($request, $memoKey);
 
 		if ($cached !== null) {
@@ -610,7 +614,7 @@ trait RouteTrait {
 	}
 
 	protected function blockedMiddlewareResponseKey(): string {
-		return '_wpsp_blocked_middleware_response';
+		return '_' . $this->hookPrefix() . '_blocked_middleware_response';
 	}
 
 	/**
@@ -842,7 +846,7 @@ trait RouteTrait {
 	protected function hookPrefix(): string {
 		return (is_object($this->funcs) && method_exists($this->funcs, '_getAppShortName'))
 			? $this->funcs->_getAppShortName()
-			: 'wpsp';
+			: 'wpsp_lite';
 	}
 
 	/*
@@ -1811,11 +1815,44 @@ trait RouteTrait {
 	 * Báo cho dev khi dùng named limiter chưa khai báo.
 	 */
 	protected function makeThrottleMiddleware(array $parameters) {
-		$limiter = $this->throttleRateLimiter();
+		$limiter = $this->throttleRateLimiter($parameters);
 
 		$this->warnUnknownNamedLimiter($limiter, $parameters);
 
 		return new ThrottleRequests($limiter);
+	}
+
+	/**
+	 * RateLimiter cho ThrottleRequests: binding 'rate.limiter' của Application (chứa named limiters
+	 * khai báo trong AppServiceProvider). Không có binding → tạo từ cache của plugin.
+	 * $parameters: tham số throttle (giữ cùng chữ ký với bản CORE, bản LITE không cần dùng).
+	 */
+	protected function throttleRateLimiter(array $parameters = []): \WPSPCORELITE\App\Cache\RateLimiter {
+		$app = $this->currentApp();
+
+		if ($app && method_exists($app, 'bound') && method_exists($app, 'make')) {
+			if ($app->bound('rate.limiter')) {
+				return $app->make('rate.limiter');
+			}
+
+			if ($app->bound('cache')) {
+				$cache = $app->make('cache');
+				return new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
+			}
+		}
+
+		// Không có container: cache của plugin theo mainPath (prefix = tên thư mục plugin).
+		static $fallback = [];
+
+		$mainPath = property_exists($this, 'mainPath') ? $this->mainPath : null;
+		$key      = (string)$mainPath;
+
+		if (!isset($fallback[$key])) {
+			$cache          = new \WPSPCORELITE\App\Cache\Cache($mainPath);
+			$fallback[$key] = new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
+		}
+
+		return $fallback[$key];
 	}
 
 	/**
@@ -1858,38 +1895,6 @@ trait RouteTrait {
 	 * Chỉ có ở bản LITE
 	 * ---------------------------------------------------------------------
 	 */
-
-	/**
-	 * RateLimiter của plugin: binding 'rate.limiter' của Application (chứa named limiters khai báo trong
-	 * AppServiceProvider). Không có binding → tạo từ cache của plugin.
-	 */
-	protected function throttleRateLimiter(): \WPSPCORELITE\App\Cache\RateLimiter {
-		$app = $this->currentApp();
-
-		if ($app && method_exists($app, 'bound') && method_exists($app, 'make')) {
-			if ($app->bound('rate.limiter')) {
-				return $app->make('rate.limiter');
-			}
-
-			if ($app->bound('cache')) {
-				$cache = $app->make('cache');
-				return new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
-			}
-		}
-
-		// Không có container: cache của plugin theo mainPath (prefix = tên thư mục plugin).
-		static $fallback = [];
-
-		$mainPath = property_exists($this, 'mainPath') ? $this->mainPath : null;
-		$key      = (string)$mainPath;
-
-		if (!isset($fallback[$key])) {
-			$cache          = new \WPSPCORELITE\App\Cache\Cache($mainPath);
-			$fallback[$key] = new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
-		}
-
-		return $fallback[$key];
-	}
 
 	/**
 	 * 'throttle:30rpm' mà chưa khai báo RateLimiter::for('30rpm') → giống Laravel, ThrottleRequests hiểu
