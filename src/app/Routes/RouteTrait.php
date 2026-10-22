@@ -77,6 +77,9 @@ trait RouteTrait {
 	 * - OR : chỉ cần một middleware trong block PASS.
 	 *
 	 * Route chỉ được coi là PASS khi tất cả các block middleware đều PASS.
+	 * Block có thể lồng nhau vô hạn cấp (phần tử con là mảng có key 'relation').
+	 * Đánh giá có short-circuit: AND dừng ở FAIL đầu tiên, OR dừng ở PASS đầu tiên,
+	 * nên các middleware phía sau sẽ KHÔNG chạy.
 	 *
 	 * Middleware hỗ trợ các định dạng:
 	 *
@@ -637,7 +640,7 @@ trait RouteTrait {
 	 * Nếu callback không thuộc các định dạng được hỗ trợ,
 	 * RuntimeException sẽ được ném ra.
 	 *
-	 * @param mixed $callback Callback cần chuẩn hóa.
+	 * @param mixed $callback        Callback cần chuẩn hóa.
 	 * @param array $constructParams Các tham số truyền vào constructor của class.
 	 *
 	 * @return callable Callback đã được chuẩn hóa và sẵn sàng để thực thi.
@@ -680,8 +683,10 @@ trait RouteTrait {
 				$args['route'] = $this->extraParams['route'] ?? null;
 			}
 
+			// build params
 			$callParams = $this->buildParametersForCallable($callback, $path, $fullPath, $requestPath, $args, $wpParams);
 
+			// call
 			return $this->resolveAndCall($callback, $callParams);
 		};
 	}
