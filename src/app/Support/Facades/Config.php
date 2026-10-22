@@ -35,7 +35,7 @@ use WPSPCORELITE\BaseInstances;
  */
 abstract class Config extends BaseInstances {
 
-	private ?ConfigCore $facade = null;
+	private ?ConfigCore $facade;
 
 	/*
 	 *
