@@ -2,44 +2,62 @@
 
 namespace WPSPCORELITE\App\Routes;
 
+use WPSPCORELITE\App\Http\Exceptions\ThrottleRequestsException;
+use WPSPCORELITE\App\Http\Middleware\ThrottleRequests;
+use WPSPCORELITE\App\Http\Request;
+
 /**
  * RouteTrait — bản LITE.
  *
  * KHÔNG phụ thuộc Illuminate / Symfony / Laravel Framework. Chỉ dùng PHP 8.0+ và WordPress core.
  *
  * - Response cho $next       → \WP_HTTP_Response.
- * - Kiểm tra response         → duck-typing (getStatusCode / get_status / status).
- * - Trả lỗi JSON / HTML       → wp_send_json() / wp_die().
- * - Request                   → $this->request → container → \WPSPCORELITE\App\Http\Request::capture().
- * - Throttle                  → ThrottleRequests + RateLimiter ('rate.limiter') của plugin, giống WPSPCORE:
- *                               'throttle:60,1', 'throttle:30rpm' (named limiter khai báo bằng RateLimiter::for()),
- *                               ThrottleRequests::using('30rpm'), ThrottleRequests::with(60, 1).
+ * - Container / DI            → container Lite (make / call) nếu có, ngược lại manual DI bằng Reflection.
+ * - Ngữ cảnh toàn cục         → chỉ Lite Facade (đã tách theo plugin qua $this->funcs->_getApplication()).
+ * - Throttle                  → Lite ThrottleRequests + RateLimiter ('rate.limiter') của plugin.
  *                               Bộ đếm nằm trong cache của plugin => không bao giờ đếm chung với plugin khác.
- * - Container / Facade Lite   → gọi qua method_exists, thiếu method nào thì bỏ qua bước đó.
  * - Không có Eloquent model binding (Lite không có ORM).
  *
  * ---------------------------------------------------------------------
- * KHÁC BIỆT CÓ CHỦ ĐÍCH SO VỚI WPSPCORE
+ * CẤU TRÚC FILE (giống nhau giữa WPSPCORE và WPSPCORELITE)
  * ---------------------------------------------------------------------
  *
- * 1. Middleware trả redirect (3xx) mà KHÔNG gọi $next → FAIL (CORE coi là PASS).
- *    Đây là cách đúng: middleware đang chặn request rồi chuyển hướng.
+ * Từ section MIDDLEWARE đến hết section UTILS: GIỐNG HỆT NHAU giữa 2 bản.
+ * Section "RIÊNG CỦA BẢN ..." ở cuối file: các method cùng tên, cùng vai trò
+ * nhưng khác cách cài đặt do nền tảng (Illuminate hay PHP thuần).
+ * Khi compare 2 file, khác biệt chỉ nằm ở: docblock đầu file, các dòng `use`
+ * và section cuối.
+ *
+ * Khi sửa phần chung: sửa ở 1 bản rồi copy nguyên văn sang bản kia.
+ *
+ * ---------------------------------------------------------------------
+ * NGỮ NGHĨA CHUNG (giữ 2 bản giống nhau khi port code)
+ * ---------------------------------------------------------------------
+ *
+ * 1. Middleware trả redirect (3xx) mà KHÔNG gọi $next → FAIL, và response đó
+ *    được ghi nhớ để nơi gọi gửi đi (sendBlockedMiddlewareResponse()).
  * 2. Closure middleware nhận thêm $args (tham số thứ 3).
- * 3. Hook args của WordPress (add_action / add_filter) được map theo signature
- *    và ưu tiên cao nhất. CORE chỉ dùng chúng làm fallback cuối cùng.
- * 4. Không có Container::setInstance() / Model resolver toàn cục. Lite Facade
- *    lấy root qua $this->funcs->_getApplication() nên đã tách theo plugin.
+ * 3. Hook args của WordPress (add_action / add_filter) được map theo signature,
+ *    có xét type, và ưu tiên cao nhất. Placeholder '' của do_action() không
+ *    đối số được bỏ qua (trừ route Filters).
+ * 4. Throttle đếm đúng 1 lần cho mỗi (request, signature).
+ * 5. [Class, 'method'] ở top-level là middleware lá; truyền 1 middleware đơn lẻ được.
  *
  * ---------------------------------------------------------------------
  * BẤT BIẾN QUAN TRỌNG (KHÔNG ĐƯỢC PHÁ KHI TỐI ƯU)
  * ---------------------------------------------------------------------
  *
- * - Request dùng để bind PHẢI là request hiện tại của plugin ($this->request),
- *   vì nó mang session / flash (errors, old input). Chỉ capture() khi không có.
- * - Ngữ cảnh container được đồng bộ TẠI THỜI ĐIỂM GỌI callback (invokeResolved),
- *   không phải lúc tạo closure: giữa 2 thời điểm đó plugin khác có thể đã chạy.
- * - Kết quả throttle được nhớ theo TỪNG request object (WeakMap / attributes),
- *   tránh đếm 2 lần trong 1 request và tránh dùng nhầm kết quả của request khác.
+ * 1. Mỗi lần gọi callback, ngữ cảnh container PHẢI trỏ về đúng application
+ *    của plugin đang chạy (xem bindContainerContext()). Ngữ cảnh được gắn
+ *    TẠI THỜI ĐIỂM GỌI callback, không chỉ lúc tạo closure: giữa 2 thời điểm
+ *    đó plugin khác có thể đã chạy.
+ *
+ * 2. Request dùng để bind PHẢI là request hiện tại của plugin ($this->request,
+ *    đã gắn session). Chỉ capture() khi không có. Request mới không có session:
+ *    back() không lấy được URL trước, còn errors / old input không đọc được.
+ *
+ * 3. Dữ liệu theo request (kết quả throttle, response bị chặn) được nhớ theo
+ *    TỪNG request object (attributes / WeakMap), không theo spl_object_id.
  */
 trait RouteTrait {
 
@@ -107,8 +125,6 @@ trait RouteTrait {
 	 * Phần tử top-level có thể là:
 	 * - Mảng block (có hoặc không có 'relation', mặc định AND).
 	 * - Middleware lá: string / Closure / [ClassName::class, 'method'].
-	 *   Dạng [Class, 'method'] ở top-level được nhận diện là middleware lá
-	 *   (trước đây bị hiểu nhầm thành block 2 phần tử và luôn FAIL).
 	 *
 	 * Middleware hỗ trợ các định dạng:
 	 *
@@ -125,8 +141,11 @@ trait RouteTrait {
 	 * - Response 3xx mà KHÔNG gọi $next     : FAIL (middleware đang chặn + redirect, vd: redirect login)
 	 * - Response còn lại / null             : PASS
 	 *
+	 * Khi FAIL vì một Response, response đó được ghi nhớ:
+	 * nơi gọi dùng sendBlockedMiddlewareResponse() để gửi redirect / lỗi đi.
+	 *
 	 * Thông tin block hiện tại sẽ được truyền vào `$args['current_block_middleware']`
-	 * (giữ nguyên key 'relation', giống WPSPCORE).
+	 * (middleware dạng class nhận qua DI param tên `$args`, Closure nhận ở tham số thứ 3).
 	 *
 	 * Ví dụ:
 	 *
@@ -147,6 +166,16 @@ trait RouteTrait {
 	 * - AuthMiddleware và VerifiedMiddleware đều phải PASS.
 	 * - AdminMiddleware hoặc ManagerMiddleware chỉ cần một PASS.
 	 *
+	 * Luồng xử lý:
+	 *
+	 * isPassedMiddleware()
+	 *  └─ evaluateMiddlewareBlock()      block AND / OR
+	 *      └─ evaluateMiddlewareNode()   block con hoặc middleware lá
+	 *          ├─ normalizeMiddlewareLeaf()
+	 *          └─ runMiddlewareLeaf()
+	 *              ├─ runThrottleMiddleware()
+	 *              └─ isPassedResult()
+	 *
 	 * @param array $middlewares Danh sách middleware block cần kiểm tra.
 	 * @param mixed $request     Request hiện tại. Nếu null sẽ tự động lấy từ container.
 	 * @param array $args        Dữ liệu bổ sung được truyền vào middleware.
@@ -154,30 +183,36 @@ trait RouteTrait {
 	 * @return bool Trả về true nếu toàn bộ middleware đều PASS, ngược lại false.
 	 */
 	public function isPassedMiddleware($middlewares = [], $request = null, $args = []) {
+		$request = $request ?? $this->resolveCurrentRequest();
+
+		// Mỗi lần đánh giá bắt đầu sạch: bỏ response bị chặn của lần đánh giá trước.
+		$this->forgetBlockedMiddlewareResponse($request);
+
 		// Không có middleware → pass
 		if (empty($middlewares)) {
 			return true;
 		}
 
-		// [CỦNG CỐ] Cho phép truyền 1 middleware đơn lẻ (string / Closure) thay vì mảng.
+		// Cho phép truyền 1 middleware đơn lẻ (string / Closure) thay vì mảng.
 		// Không dùng (array) vì (array)$closure = [] → middleware bị bỏ qua.
 		if (!is_array($middlewares)) {
 			$middlewares = [$middlewares];
 		}
 
-		$app     = $this->currentApp();
-		$request = $request ?? $this->resolveCurrentRequest();
-		$args    = (array)$args;
+		$args = (array)$args;
 
+		// Mỗi phần tử top-level là 1 block. Route PASS khi TẤT CẢ block PASS.
 		foreach ($middlewares as $blockMiddleware) {
 			$passed = (is_array($blockMiddleware) && !$this->isClassMethodLeaf($blockMiddleware))
-				? $this->evaluateMiddlewareBlock($blockMiddleware, $args, $request, $app)
-				: $this->evaluateMiddlewareNode($blockMiddleware, $args, $request, $app); // top-level lá: string / Closure / [Class, 'method']
+				? $this->evaluateMiddlewareBlock($blockMiddleware, $args, $request)
+				: $this->evaluateMiddlewareNode($blockMiddleware, $args, $request); // top-level lá: string / Closure / [Class, 'method']
 
 			if (!$passed) {
 				return false;
 			}
 		}
+
+		$this->forgetBlockedMiddlewareResponse($request);
 
 		return true;
 	}
@@ -211,9 +246,9 @@ trait RouteTrait {
 	 * Mảng KHÔNG có 'relation' ở cấp này được hiểu là middleware lá dạng
 	 * [Class, 'method'] / ['throttle:...'].
 	 */
-	protected function evaluateMiddlewareNode($node, array $args, $request, $app): bool {
+	protected function evaluateMiddlewareNode($node, array $args, $request): bool {
 		if (is_array($node) && array_key_exists('relation', $node)) {
-			return $this->evaluateMiddlewareBlock($node, $args, $request, $app);
+			return $this->evaluateMiddlewareBlock($node, $args, $request);
 		}
 
 		$mw = $this->normalizeMiddlewareLeaf($node, $args);
@@ -223,16 +258,17 @@ trait RouteTrait {
 			return true;
 		}
 
-		return $this->runMiddlewareLeaf($mw, $request, $app);
+		return $this->runMiddlewareLeaf($mw, $request);
 	}
 
 	/**
 	 * Đánh giá 1 block theo relation (mặc định AND).
+	 * Các phần tử con có thể là middleware lá hoặc block con lồng nhau, đệ quy vô hạn cấp.
 	 */
-	protected function evaluateMiddlewareBlock(array $block, array $args, $request, $app): bool {
+	protected function evaluateMiddlewareBlock(array $block, array $args, $request): bool {
 		$relation = strtoupper((string)($block['relation'] ?? 'AND'));
 
-		// Block gốc (còn 'relation') cho middleware đọc, giống WPSPCORE.
+		// Block gốc (còn 'relation') cho middleware đọc.
 		$args['current_block_middleware'] = $block;
 
 		$children = $block;
@@ -243,15 +279,22 @@ trait RouteTrait {
 		}
 
 		if ($relation === 'OR') {
+			// Nhánh OR thua rồi nhánh sau thắng: response "chặn" của nhánh thua
+			// không phải lý do route bị chặn → khôi phục trạng thái trước block.
+			$before = $this->getBlockedMiddlewareResponse($request);
+
 			foreach ($children as $child) {
-				if ($this->evaluateMiddlewareNode($child, $args, $request, $app)) return true;
+				if ($this->evaluateMiddlewareNode($child, $args, $request)) {
+					$this->requestStash($request, $this->blockedMiddlewareResponseKey(), $before);
+					return true;
+				}
 			}
 			return false;
 		}
 
 		// AND
 		foreach ($children as $child) {
-			if (!$this->evaluateMiddlewareNode($child, $args, $request, $app)) return false;
+			if (!$this->evaluateMiddlewareNode($child, $args, $request)) return false;
 		}
 		return true;
 	}
@@ -293,7 +336,7 @@ trait RouteTrait {
 
 		$parts = explode(':', $mw, 2);
 
-		if (is_a(ltrim($parts[0], '\\'), \WPSPCORELITE\App\Http\Middleware\ThrottleRequests::class, true)) {
+		if (is_a(ltrim($parts[0], '\\'), ThrottleRequests::class, true)) {
 			return isset($parts[1]) && $parts[1] !== '' ? 'throttle:' . $parts[1] : 'throttle';
 		}
 
@@ -302,8 +345,9 @@ trait RouteTrait {
 
 	/**
 	 * Chạy 1 middleware đã normalize, trả về true (PASS) / false (FAIL).
+	 * FAIL vì một Response → ghi nhớ response đó (xem sendBlockedMiddlewareResponse()).
 	 */
-	protected function runMiddlewareLeaf(array $mw, $request, $app): bool {
+	protected function runMiddlewareLeaf(array $mw, $request): bool {
 		if ($mw['type'] === 'throttle') {
 			return $this->runThrottleMiddleware($mw['value'], $request);
 		}
@@ -326,23 +370,23 @@ trait RouteTrait {
 				return false;
 			}
 
-			$instance = ($app && method_exists($app, 'make'))
-				? $app->make($class)
-				: $this->manualMakeClass($class);
+			$instance = $this->containerMake($class);
+			$method   = method_exists($instance, $mw['method']) ? $mw['method'] : 'handle';
 
-			$method = method_exists($instance, $mw['method']) ? $mw['method'] : 'handle';
-			$params = [
+			$res = $this->callWithContainer([$instance, $method], [
 				'request' => $request,
 				'next'    => $next,
 				'args'    => $mw['args'] ?? null,
-			];
-
-			$res = ($app && method_exists($app, 'call'))
-				? $app->call([$instance, $method], $params)
-				: $this->manualResolveAndCall([$instance, $method], $params);
+			]);
 		}
 
-		return $this->isPassedResult($res, $nextCalled);
+		$passed = $this->isPassedResult($res, $nextCalled);
+
+		if (!$passed) {
+			$this->rememberBlockedMiddlewareResponse($request, $res);
+		}
+
+		return $passed;
 	}
 
 	/**
@@ -376,8 +420,9 @@ trait RouteTrait {
 	}
 
 	/**
-	 * Chạy throttle giống WPSPCORE: ThrottleRequests + RateLimiter của plugin.\
-	 * Mỗi signature (vd: 'throttle:60,1', 'throttle:30rpm') chỉ đếm đúng 1 lần / request.
+	 * Chạy throttle: ThrottleRequests + RateLimiter của plugin.\
+	 * Mỗi signature (vd: 'throttle:60,1', 'throttle:30rpm') chỉ đếm đúng 1 lần / request:
+	 * cùng 1 signature xuất hiện ở nhiều block / nhiều route trong 1 request chỉ tăng bộ đếm 1 lần.
 	 *
 	 * - 'throttle'               → 60 request / phút
 	 * - 'throttle:60,1'          → 60 request / 1 phút
@@ -385,14 +430,15 @@ trait RouteTrait {
 	 * - 'throttle:10|60,1'       → khách 10, user đăng nhập 60 / phút
 	 * - 'throttle:30rpm'         → named limiter: RateLimiter::for('30rpm', fn($request) => Limit::perMinute(30))
 	 *
-	 * Vượt giới hạn → dừng request với 429 (JSON nếu client muốn JSON, ngược lại wp_die) + Retry-After / X-RateLimit-*.
+	 * Vượt giới hạn / lỗi → dừng request luôn (xem respondThrottleFailure()):
+	 * 429 (JSON nếu client muốn JSON, ngược lại wp_die) + Retry-After / X-RateLimit-*.
 	 */
 	protected function runThrottleMiddleware(string $value, $request): bool {
 		$memoKey = '_wpsp_throttle.' . $value;
-		$cached  = $this->requestMemo($request, $memoKey);
+		$cached  = $this->requestStash($request, $memoKey);
 
 		if ($cached !== null) {
-			return $cached;
+			return (bool)$cached; // dùng lại kết quả, không increment/ghi cache lần nữa
 		}
 
 		$parts      = explode(':', $value, 2);
@@ -400,129 +446,249 @@ trait RouteTrait {
 		$passed     = false;
 
 		try {
-			$limiter    = $this->throttleRateLimiter();
-			$middleware = new \WPSPCORELITE\App\Http\Middleware\ThrottleRequests($limiter);
-
-			$this->warnUnknownNamedLimiter($limiter, $parameters);
+			$middleware = $this->makeThrottleMiddleware($parameters);
 
 			$response = $middleware->handle($request, function() {
 				return $this->makeNextResponse();
 			}, ...$parameters);
 
 			// X-RateLimit-* được gắn vào response giả của $next → gửi ra client.
-			if (is_object($response) && method_exists($response, 'get_headers')) {
-				$this->sendHeaders((array)$response->get_headers());
-			}
+			$this->sendHeaders($this->rateLimitHeaders($response));
 
 			$passed = true;
 		}
-		catch (\WPSPCORELITE\App\Http\Exceptions\ThrottleRequestsException $e) {
-			$this->respondTooManyRequests($e);
-		}
 		catch (\Throwable $e) {
-			$this->abortWithStatus($this->safeErrorMessage($e), 500, '500 - Internal Server Error.');
+			$this->respondThrottleFailure($e);
 		}
 
-		$this->requestMemo($request, $memoKey, $passed);
+		$this->requestStash($request, $memoKey, $passed);
 
 		return $passed;
 	}
 
 	/**
-	 * RateLimiter của plugin: binding 'rate.limiter' của Application (chứa named limiters khai báo trong
-	 * AppServiceProvider). Không có binding → tạo từ cache của plugin.
+	 * Lấy các header Retry-After / X-RateLimit-* từ response (duck-typing).
+	 * Chỉ lấy các header này để không gửi nhầm Cache-Control / Date của response giả.
 	 */
-	protected function throttleRateLimiter(): \WPSPCORELITE\App\Cache\RateLimiter {
-		$app = $this->currentApp();
-
-		if ($app && method_exists($app, 'bound') && method_exists($app, 'make')) {
-			if ($app->bound('rate.limiter')) {
-				return $app->make('rate.limiter');
-			}
-
-			if ($app->bound('cache')) {
-				$cache = $app->make('cache');
-				return new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
-			}
+	protected function rateLimitHeaders($response): array {
+		if (!is_object($response)) {
+			return [];
 		}
 
-		// Không có container: cache của plugin theo mainPath (prefix = tên thư mục plugin).
-		static $fallback = [];
-
-		$mainPath = property_exists($this, 'mainPath') ? $this->mainPath : null;
-		$key      = (string)$mainPath;
-
-		if (!isset($fallback[$key])) {
-			$cache          = new \WPSPCORELITE\App\Cache\Cache($mainPath);
-			$fallback[$key] = new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
+		if (method_exists($response, 'get_headers')) {
+			$headers = (array)$response->get_headers();
+		}
+		elseif (isset($response->headers) && is_object($response->headers) && method_exists($response->headers, 'all')) {
+			$headers = (array)$response->headers->all();
+		}
+		else {
+			return [];
 		}
 
-		return $fallback[$key];
-	}
-
-	/**
-	 * 'throttle:30rpm' mà chưa khai báo RateLimiter::for('30rpm') → giống Laravel, ThrottleRequests hiểu
-	 * thành (int)'30rpm' = 30 / phút. Báo cho dev biết (WP_DEBUG) thay vì im lặng.
-	 */
-	protected function warnUnknownNamedLimiter(\WPSPCORELITE\App\Cache\RateLimiter $limiter, array $parameters): void {
-		$name = $parameters[0] ?? null;
-
-		if ($name === null || is_numeric($name) || str_contains($name, '|') || $limiter->limiter($name) !== null) {
-			return;
-		}
-
-		if (function_exists('_doing_it_wrong')) {
-			_doing_it_wrong(
-				'throttle:' . esc_html($name),
-				sprintf('Rate limiter [%s] chưa được khai báo. Hãy gọi RateLimiter::for(\'%s\', ...) trong AppServiceProvider::boot().', esc_html($name), esc_html($name)),
-				''
-			);
-		}
-	}
-
-	/**
-	 * Trả 429. Limit::response() có thể trả về:
-	 * - \WP_HTTP_Response / \WP_REST_Response / object có get_status() → gửi đúng status, header, data.
-	 * - chuỗi → dùng làm thông báo lỗi.
-	 * - mảng → JSON.
-	 * Không có response riêng → thông báo mặc định (JSON hoặc wp_die).
-	 */
-	protected function respondTooManyRequests(\WPSPCORELITE\App\Http\Exceptions\ThrottleRequestsException $e): void {
-		$custom  = $e->getResponse();
-		$headers = $e->getHeaders();
-
-		if (is_object($custom) && method_exists($custom, 'get_status')) {
-			$this->sendHeaders(array_merge($headers, method_exists($custom, 'get_headers') ? (array)$custom->get_headers() : []));
-			wp_send_json(method_exists($custom, 'get_data') ? $custom->get_data() : null, (int)$custom->get_status());
-			exit;
-		}
-
-		if (is_array($custom)) {
-			$this->sendHeaders($headers);
-			wp_send_json($custom, 429);
-			exit;
-		}
-
-		$message = is_string($custom) && $custom !== '' ? $custom : $e->getMessage();
-
-		$this->abortWithStatus($message, 429, '429 - Too Many Requests.', $headers);
+		return array_filter($headers, function($name) {
+			$name = strtolower((string)$name);
+			return str_starts_with($name, 'x-ratelimit-') || $name === 'retry-after';
+		}, ARRAY_FILTER_USE_KEY);
 	}
 
 	/*
 	 * =====================================================================
-	 * HTTP HELPERS
+	 * BLOCKED MIDDLEWARE RESPONSE
 	 * =====================================================================
 	 */
 
 	/**
-	 * Response mặc định mà $next trả về cho middleware.
+	 * Response mà middleware đã dùng để chặn route ở lần isPassedMiddleware() gần nhất
+	 * (vd: redirect('/login'), back()->withErrors(...), response 403).
+	 * null nếu route PASS hoặc middleware chỉ trả false / \WP_Error.
 	 */
-	protected function makeNextResponse() {
-		return new \WP_HTTP_Response('OK', 200);
+	public function getBlockedMiddlewareResponse($request = null) {
+		$request  = $request ?? $this->resolveCurrentRequest();
+		$response = $this->requestStash($request, $this->blockedMiddlewareResponseKey());
+
+		return is_object($response) ? $response : null;
 	}
 
 	/**
+	 * Gửi response đã chặn route ra client. Trả về true nếu đã gửi.
+	 *
+	 * Nơi gọi nên exit ngay sau khi hàm trả true:
+	 *
+	 *     if (!$this->isPassedMiddleware($middlewares, $request, $args)) {
+	 *         if ($this->sendBlockedMiddlewareResponse($request)) exit;
+	 *         wp_die(...403...);
+	 *     }
+	 *
+	 * Trả false (không gửi gì) khi:
+	 * - không có response, hoặc header đã gửi;
+	 * - response là redirect về CHÍNH URL đang truy cập (sẽ thành vòng lặp redirect vô hạn,
+	 *   vd: back() khi không có trang trước, redirect()->refresh());
+	 * - filter "{app}_send_blocked_middleware_response" trả false (tắt hẳn tính năng):
+	 *       add_filter('wpsp_send_blocked_middleware_response', '__return_false');
+	 *
+	 * Action "{app}_before_send_middleware_response" chạy ngay trước khi gửi:
+	 * nếu session được lưu ở cuối request bằng cơ chế riêng, có thể lưu tại đây
+	 * để flash data của withErrors() / with() không bị mất. Sau khi gửi, header
+	 * (kể cả Set-Cookie) không thể thêm được nữa.
+	 */
+	public function sendBlockedMiddlewareResponse($request = null): bool {
+		$request  = $request ?? $this->resolveCurrentRequest();
+		$response = $this->getBlockedMiddlewareResponse($request);
+
+		if ($response === null || headers_sent()) {
+			return false;
+		}
+
+		if ($this->isRedirectToCurrentUrl($response, $request)) {
+			return false;
+		}
+
+		if (
+			function_exists('apply_filters')
+			&& !apply_filters($this->hookPrefix() . '_send_blocked_middleware_response', true, $response, $request)
+		) {
+			return false;
+		}
+
+		if (function_exists('do_action')) {
+			do_action($this->hookPrefix() . '_before_send_middleware_response', $response, $request);
+		}
+
+		// Response có send(): Symfony / Illuminate / Lite Response, RedirectResponse...
+		// Symfony send(bool $flush = true) gọi fastcgi_finish_request(): cắt kết nối ngay,
+		// mọi header / cookie gửi sau đó (vd: lưu session lúc shutdown) bị mất.
+		// → truyền $flush = false khi có tham số này, để request kết thúc bình thường bằng exit.
+		if (method_exists($response, 'send')) {
+			$response->send(...$this->responseSendArgs($response));
+			return true;
+		}
+
+		// \WP_HTTP_Response / \WP_REST_Response.
+		$status = $this->getResponseStatusCode($response);
+		if ($status === null) {
+			return false;
+		}
+
+		function_exists('status_header') ? status_header($status) : http_response_code($status);
+
+		if (method_exists($response, 'get_headers')) {
+			$this->sendHeaders((array)$response->get_headers());
+		}
+
+		if (method_exists($response, 'get_data')) {
+			$data = $response->get_data();
+			if (is_scalar($data)) {
+				echo $data;
+			}
+			elseif ($data !== null) {
+				$this->sendHeaders(['Content-Type' => 'application/json; charset=utf-8']);
+				echo function_exists('wp_json_encode') ? wp_json_encode($data) : json_encode($data);
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Ghi nhớ response chặn route. Chỉ giữ response ĐẦU TIÊN
+	 * (AND dừng ở FAIL đầu tiên nên đó chính là lý do bị chặn).
+	 */
+	protected function rememberBlockedMiddlewareResponse($request, $res): void {
+		if (!is_object($res) || $this->getResponseStatusCode($res) === null) {
+			return;
+		}
+
+		if ($this->getBlockedMiddlewareResponse($request) !== null) {
+			return;
+		}
+
+		$this->requestStash($request, $this->blockedMiddlewareResponseKey(), $res);
+	}
+
+	protected function forgetBlockedMiddlewareResponse($request): void {
+		$this->requestStash($request, $this->blockedMiddlewareResponseKey(), null);
+	}
+
+	protected function blockedMiddlewareResponseKey(): string {
+		return '_wpsp_blocked_middleware_response';
+	}
+
+	/**
+	 * Response có phải redirect (3xx) về chính URL đang truy cập hay không.
+	 * So sánh path + query (query không phân biệt thứ tự), bỏ qua scheme / host / dấu "/" cuối.
+	 */
+	protected function isRedirectToCurrentUrl($response, $request): bool {
+		$status = $this->getResponseStatusCode($response);
+
+		if ($status === null || $status < 300 || $status >= 400) {
+			return false;
+		}
+
+		$target = null;
+
+		if (method_exists($response, 'getTargetUrl')) {
+			$target = $response->getTargetUrl();
+		}
+		elseif (isset($response->headers) && is_object($response->headers) && method_exists($response->headers, 'get')) {
+			$target = $response->headers->get('Location');
+		}
+		elseif (method_exists($response, 'get_headers')) {
+			$headers = array_change_key_case((array)$response->get_headers(), CASE_LOWER);
+			$target  = $headers['location'] ?? null;
+		}
+
+		if (!is_string($target) || $target === '') {
+			return false;
+		}
+
+		$current = (is_object($request) && method_exists($request, 'getRequestUri'))
+			? (string)$request->getRequestUri()
+			: (string)($_SERVER['REQUEST_URI'] ?? '');
+
+		return $this->urlCompareKey($target) === $this->urlCompareKey($current);
+	}
+
+	/**
+	 * Khoá so sánh URL: path (bỏ "/" cuối) + query đã sắp xếp.
+	 */
+	protected function urlCompareKey(string $url): string {
+		$parts = parse_url($url);
+
+		if ($parts === false) {
+			return $url;
+		}
+
+		$path = rtrim($parts['path'] ?? '', '/');
+		parse_str($parts['query'] ?? '', $query);
+		ksort($query);
+
+		return ($path === '' ? '/' : $path) . '?' . http_build_query($query);
+	}
+
+	/**
+	 * Đối số cho $response->send(): [false] nếu send() có tham số $flush (Symfony 6.4+),
+	 * ngược lại [] (Symfony cũ / Lite Response).
+	 */
+	protected function responseSendArgs($response): array {
+		try {
+			$parameters = (new \ReflectionMethod($response, 'send'))->getParameters();
+		}
+		catch (\Throwable $e) {
+			return [];
+		}
+
+		return (isset($parameters[0]) && $parameters[0]->getName() === 'flush') ? [false] : [];
+	}
+
+	/*
+	 * =====================================================================
+	 * HTTP / REQUEST HELPERS
+	 * =====================================================================
+	 */
+
+	/**
 	 * Lấy HTTP status code từ response bất kỳ (duck-typing).
+	 * Hỗ trợ Symfony / Illuminate / Lite Response, \WP_HTTP_Response, \WP_REST_Response.
 	 */
 	protected function getResponseStatusCode($res): ?int {
 		if (!is_object($res)) {
@@ -538,26 +704,6 @@ trait RouteTrait {
 			return (int)$res->status();
 		}
 		return null;
-	}
-
-	/**
-	 * Dừng request với status code: JSON nếu client muốn JSON, ngược lại wp_die().\
-	 * Luôn dừng hẳn để không có output nào bị nối thêm sau response lỗi.
-	 */
-	protected function abortWithStatus(string $message, int $status, string $title, array $headers = []): void {
-		$this->sendHeaders($headers);
-
-		if ($this->funcs->_wantsJson()) {
-			wp_send_json($this->funcs->_response(false, $message, $status), $status);
-			exit;
-		}
-
-		wp_die($message, $title, [
-			'back_link' => true,
-			'response'  => $status,
-		]);
-
-		exit;
 	}
 
 	/**
@@ -581,9 +727,9 @@ trait RouteTrait {
 	}
 
 	/**
-	 * Container / application của plugin (có thể null trong Lite).
+	 * Container / application của plugin hiện tại.
 	 *
-	 * [CỦNG CỐ] Kiểm tra is_object trước: method_exists(null, ...) ném TypeError ở PHP 8.
+	 * Kiểm tra is_object trước: method_exists(null, ...) ném TypeError ở PHP 8.
 	 */
 	protected function currentApp() {
 		return (is_object($this->funcs) && method_exists($this->funcs, '_getApplication'))
@@ -592,7 +738,7 @@ trait RouteTrait {
 	}
 
 	/**
-	 * Lấy request hiện tại: $this->request → container → Lite Request::capture().
+	 * Lấy request hiện tại: $this->request → container → Request::capture().
 	 *
 	 * Luôn ưu tiên $this->request: đây là request đã gắn session của plugin,
 	 * nơi chứa flash data (errors, old input) của redirect()->withErrors().
@@ -608,9 +754,8 @@ trait RouteTrait {
 			return $app->make('request');
 		}
 
-		$liteRequest = \WPSPCORELITE\App\Http\Request::class;
-		if (class_exists($liteRequest) && method_exists($liteRequest, 'capture')) {
-			return $liteRequest::capture();
+		if (class_exists(Request::class) && method_exists(Request::class, 'capture')) {
+			return Request::capture();
 		}
 
 		return null;
@@ -641,44 +786,63 @@ trait RouteTrait {
 	}
 
 	/**
-	 * Ghi nhớ giá trị trong vòng đời 1 request.\
-	 * Ưu tiên request attributes (nếu Lite Request có), ngược lại dùng bộ nhớ tĩnh theo request.
+	 * Lưu / đọc 1 giá trị trong vòng đời 1 request.
 	 *
-	 * Gọi 2 tham số → đọc (null nếu chưa có). Gọi 3 tham số → ghi.
+	 * - requestStash($request, $key)          → đọc (null nếu chưa có).
+	 * - requestStash($request, $key, $value)  → ghi; $value = null là xoá.
+	 *
+	 * Dùng WeakMap theo request object: mỗi request có ngăn nhớ riêng, tự xoá khi
+	 * request bị giải phóng (spl_object_id có thể bị tái sử dụng cho request mới →
+	 * dùng nhầm dữ liệu của request cũ). Request không phải object → bộ nhớ tĩnh.
+	 *
+	 * KHÔNG ghi vào $request->attributes: response bị chặn giữ tham chiếu ngược tới
+	 * request / session → attributes phình to, Debugbar / log dump request sẽ hết bộ nhớ;
+	 * đồng thời attributes còn được dùng để bind param (requestBag('attributes')).
 	 */
-	protected function requestMemo($request, string $key, ?bool $value = null): ?bool {
-		// WeakMap: mỗi request object có ngăn nhớ riêng, tự xoá khi request bị giải phóng
-		// (spl_object_id có thể bị tái sử dụng cho request mới => dùng nhầm kết quả throttle cũ).
+	protected function requestStash($request, string $key, ...$value) {
 		static $store = null, $global = [];
 		$store ??= new \WeakMap();
 
-		$write = func_num_args() >= 3;
-		$bag   = ($request && isset($request->attributes) && is_object($request->attributes)) ? $request->attributes : null;
-
-		if ($bag && method_exists($bag, 'has') && method_exists($bag, 'get') && method_exists($bag, 'set')) {
-			if ($write) {
-				$bag->set($key, $value);
-				return $value;
-			}
-			return $bag->has($key) ? (bool)$bag->get($key) : null;
-		}
+		$write = count($value) > 0;
+		$value = $value[0] ?? null;
 
 		if (!is_object($request)) {
-			if ($write) {
-				return $global[$key] = $value;
+			if (!$write) {
+				return $global[$key] ?? null;
 			}
-			return $global[$key] ?? null;
+			if ($value === null) {
+				unset($global[$key]);
+			}
+			else {
+				$global[$key] = $value;
+			}
+			return $value;
 		}
 
 		$memo = $store[$request] ?? [];
 
-		if ($write) {
-			$memo[$key]      = $value;
-			$store[$request] = $memo;
-			return $value;
+		if (!$write) {
+			return $memo[$key] ?? null;
 		}
 
-		return $memo[$key] ?? null;
+		if ($value === null) {
+			unset($memo[$key]);
+		}
+		else {
+			$memo[$key] = $value;
+		}
+		$store[$request] = $memo;
+
+		return $value;
+	}
+
+	/**
+	 * Prefix cho action / filter của plugin hiện tại (vd: "wpsp").
+	 */
+	protected function hookPrefix(): string {
+		return (is_object($this->funcs) && method_exists($this->funcs, '_getAppShortName'))
+			? $this->funcs->_getAppShortName()
+			: 'wpsp';
 	}
 
 	/*
@@ -734,10 +898,19 @@ trait RouteTrait {
 
 	/**
 	 * Chuẩn bị callback cho các function đặc biệt, ví dụ: add_menu_page(), add_action()...\
-	 * Closure trả về nhận các đối số WordPress truyền vào (hook args) và map chúng vào signature.
+	 * Sử dụng hàm này khi cần gọi "Callback Dependencies Injection" trong các class callback của Route.\
+	 * Ví dụ:
+	 * - Route::get('/my-page', [MyClass::class, 'myMethod']);
 	 *
-	 * Params được build LÚC CLOSURE CHẠY (lazy) để lấy đúng request / route
-	 * tại thời điểm WordPress thực sự gọi callback.
+	 * Lúc này myMethod được gọi với DI tự động.\
+	 * Nhưng trong myMethod chúng ta lại muốn gọi tiếp method khác, ví dụ: $this->secondMethod()
+	 * Nếu không sử dụng hàm này, thì secondMethod() sẽ không được "Dependencies Injection".
+	 *
+	 * Closure trả về nhận các đối số WordPress truyền vào (hook args) và map chúng
+	 * vào signature của method. Params được build LÚC CLOSURE CHẠY (lazy) để lấy
+	 * đúng request / route tại thời điểm WordPress thực sự gọi callback.
+	 *
+	 * $class có thể là instance hoặc tên class (tự khởi tạo qua container).
 	 */
 	public function prepareCallbackFunction($method, $path, $fullPath, $class = null, $args = []): \Closure {
 		return function(...$wpParams) use ($method, $path, $fullPath, $class, $args) {
@@ -746,12 +919,10 @@ trait RouteTrait {
 			// Nếu truyền tên class thay vì instance, tự khởi tạo class với DI.
 			$targetInstance = $class;
 			if (is_string($class) && class_exists($class)) {
-				$container      = $this->currentApp();
-				$targetInstance = ($container && method_exists($container, 'make'))
-					? $container->make($class)
-					: $this->manualMakeClass($class);
+				$targetInstance = $this->containerMake($class);
 			}
 
+			// build callback [instance, method]
 			$callback = [$targetInstance ?? $this, $method];
 
 			if (!isset($args['route'])) {
@@ -766,31 +937,38 @@ trait RouteTrait {
 		};
 	}
 
+	/*
+	 * =====================================================================
+	 * PARAM BINDING
+	 * =====================================================================
+	 */
+
 	/**
-	 * Build params for callable (route callback).
-	 *
-	 * - Reflection signature (có cache)
+	 * Build params for callable (route callback).\
+	 * Hàm này xử lý rất nhiều trường hợp params của method, bao gồm:
+	 * - Detect callback type
+	 * - Reflection callback signature (có cache)
+	 * - WordPress hook args (add_action / add_filter) theo signature
 	 * - Regex route matching / Ajax route compatibility
 	 * - Fallback param build khi route không match
-	 * - WordPress hook args (add_action / add_filter) theo vị trí
 	 * - Regex capture parsing (named + positional)
 	 * - Request source aggregation (attributes, POST, GET)
 	 * - Primitive param binding
+	 * - Class param binding (Request, __wpspConstruct, model binding nếu có)
 	 * - Metadata injection
 	 * - Request → route parameter bridging
 	 *
 	 * Thứ tự ưu tiên giá trị cho param PRIMITIVE (khi route match):
 	 *   0) WP hook args → 1) named capture (?P<name>) → 2) request attributes
-	 *   → 3) POST → 4) query string → 5) positional capture → 6) default → null
+	 *   → 3) POST → 4) query string → 5) positional capture → 6) default value → null
 	 *
-	 * Param kiểu class:
-	 *   - Request (kể cả class con) → request hiện tại.
-	 *   - __wpspConstruct → tạo instance và gán thành property.
-	 *   - Còn lại → KHÔNG đưa vào $callParams, container / manual DI tự inject.
+	 * Param kiểu class: xem resolveClassParam() (khác nhau giữa CORE / LITE).
+	 * Param kiểu class không được resolve tại đây → KHÔNG đưa vào $callParams,
+	 * container / manual DI tự inject khi gọi.
 	 *
-	 * Khác biệt có chủ đích giữa 2 nhánh (giữ nguyên như bản gốc):
-	 *   - Route KHÔNG match: params < meta < $args (args ghi đè).
-	 *   - Route match      : meta ghi đè; $args chỉ điền vào key chưa có (isset).
+	 * Khác biệt có chủ đích giữa 2 nhánh:
+	 * - Route KHÔNG match: params < meta < $args (args ghi đè).
+	 * - Route match      : meta ghi đè; $args chỉ điền vào key chưa có (isset).
 	 */
 	public function getCallParams($path, $fullPath, $requestPath, $callbackOrClass, $method = null, $args = [], $wpParams = []) {
 		if ($callbackOrClass instanceof \Closure) {
@@ -813,12 +991,13 @@ trait RouteTrait {
 			$passed = ($this->request->all()['action'] ?? null) === $fullPath;
 		}
 
-		// "Actions" / "Filters" không có request path → luôn coi như đang ở đúng path.
+		// "Actions" / "Filters" không có request path (add_action / add_filter) → luôn coi như đang ở đúng path.
 		if (str_ends_with($calledClass, 'Actions') || str_ends_with($calledClass, 'Filters')) {
 			$requestPath = $fullPath;
 		}
 
-		// Chỉ thực sự bind dữ liệu khi đang truy cập đúng "path" / "fullPath".
+		// Chỉ thực sự bind dữ liệu khi đang truy cập đúng "path" / "fullPath",
+		// tránh thực thi code không cần thiết khi đang ở URL khác.
 		if (
 			!empty($regexPath)
 			&& (
@@ -847,31 +1026,36 @@ trait RouteTrait {
 			foreach ($parameters as $param) {
 				$name = $param->getName();
 
+				// Hook args vẫn được dùng dù route không khớp.
 				if (array_key_exists($name, $hookArgs)) {
 					$callParams[$name] = $hookArgs[$name];
 					continue;
 				}
 
 				if ($className = $this->getClassFromType($param->getType())) {
-					$special = $this->resolveSpecialClassParam($name, $className, $method);
-					if ($special !== null) {
-						$callParams[$name] = $special;
+					// $sources = null: route không khớp → không model binding.
+					[$resolved, $value] = $this->resolveClassParam($param, $className, $method, null);
+					if ($resolved) {
+						$callParams[$name] = $value;
 					}
 					continue;
 				}
 
+				// Primitive → NULL
 				$callParams[$name] = null;
 			}
 
-			// Thứ tự ghi đè giữ như bản cũ: params < meta < args.
+			// Thứ tự ghi đè: params < meta < args. Phần dư hook args (variadic) nối vào cuối.
 			return array_merge($callParams, $meta, $args, $this->variadicHookArgs($hookArgs));
 		}
 
 		/*
 		 * ----- Route khớp: bind đầy đủ -----
 		 */
+		// QUAN TRỌNG: request đã gắn session, không capture request mới.
 		$baseRequest = $this->resolveCurrentRequest();
 
+		// Named groups (?P<name>) và positional captures (1..n).
 		$named      = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
 		$positional = array_values(array_filter($matches, fn($k) => is_int($k) && $k > 0, ARRAY_FILTER_USE_KEY));
 
@@ -879,6 +1063,7 @@ trait RouteTrait {
 		$post  = $this->requestBag($baseRequest, 'request');    // POST
 		$attr  = $this->requestBag($baseRequest, 'attributes'); // attributes
 
+		$sources    = ['named' => $named, 'query' => $query, 'post' => $post, 'args' => $args];
 		$callParams = [];
 		$posIndex   = 0;
 
@@ -891,11 +1076,11 @@ trait RouteTrait {
 				continue;
 			}
 
-			// Param kiểu class: Request / __wpspConstruct, còn lại để container DI.
+			// Param kiểu class: Request / __wpspConstruct / model binding, còn lại để container DI.
 			if ($className = $this->getClassFromType($param->getType())) {
-				$special = $this->resolveSpecialClassParam($name, $className, $method);
-				if ($special !== null) {
-					$callParams[$name] = $special;
+				[$resolved, $value] = $this->resolveClassParam($param, $className, $method, $sources);
+				if ($resolved) {
+					$callParams[$name] = $value;
 				}
 				continue;
 			}
@@ -924,10 +1109,12 @@ trait RouteTrait {
 			elseif ($param->isDefaultValueAvailable()) {
 				$value = $param->getDefaultValue();
 			}
+			// 7) else null
 			else {
 				$value = null;
 			}
 
+			// Nếu là string, decode URL-encoded values (an toàn)
 			$callParams[$name] = is_string($value) ? urldecode($value) : $value;
 		}
 
@@ -941,7 +1128,8 @@ trait RouteTrait {
 			}
 		}
 
-		// Expose toàn bộ named captures cho middleware / log.
+		// Expose toàn bộ named captures (dù method không khai báo param cụ thể)
+		// — giúp lấy được $routeParams['endpoint'] trong middleware hoặc log.
 		foreach ($named as $k => $v) {
 			if (!array_key_exists($k, $callParams)) {
 				$callParams[$k] = is_string($v) ? urldecode($v) : $v;
@@ -950,9 +1138,7 @@ trait RouteTrait {
 
 		// Set parameters cho route.
 		if (isset($args['route']) && $args['route'] instanceof RouteData) {
-			$routeParameters = $callParams;
-			unset($routeParameters['route']);
-			$args['route']->parameters = $routeParameters;
+			$args['route']->parameters = $this->routeParametersFrom($callParams);
 		}
 
 		// Phần dư của hook args cho tham số variadic (key số → nối vào cuối).
@@ -964,22 +1150,68 @@ trait RouteTrait {
 	}
 
 	/**
-	 * Tham số kiểu class "đặc biệt":
-	 * - Request (kể cả class con) → request hiện tại.
-	 * - "__wpspConstruct" → tự khởi tạo class và gán thành property.
+	 * Tham số lưu vào RouteData::$parameters (đọc lại bằng $request->route('id'),
+	 * Debugbar, log...).
 	 *
-	 * @return mixed|null null nếu không thuộc trường hợp đặc biệt (để container / manual DI xử lý).
+	 * Bỏ 'route' và object Request: Request giữ session, route resolver, container...
+	 * Dump nó (print_r / var_export trong Debugbar collector) sẽ duyệt cả đồ thị object
+	 * của plugin → chuỗi hàng GB → "Allowed memory size exhausted", trang load mãi.
 	 */
-	protected function resolveSpecialClassParam(string $name, string $className, $method) {
-		if ($requestInstance = $this->resolveRequestForType($className)) {
-			return $requestInstance;
+	protected function routeParametersFrom(array $callParams): array {
+		unset($callParams['route']);
+
+		return array_filter($callParams, fn($value) => !($value instanceof Request));
+	}
+
+	/**
+	 * Resolve 1 param kiểu class trong getCallParams().
+	 *
+	 * Thứ tự:
+	 * 1) Request → request hiện tại (xem resolveRequestForType()).
+	 * 2) Eloquent Model → model binding, chỉ khi route khớp ($sources !== null)
+	 *    và chỉ ở bản có ORM (xem resolveModelParam()).
+	 * 3) "__wpspConstruct" → tự khởi tạo class (xem injectConstructProperty()).
+	 *
+	 * Trong "__wpspConstruct", giá trị resolve được ở bước 1 / 2 cũng được gán
+	 * thành property cùng tên, giống bước 3.
+	 *
+	 * @param array|null $sources ['named', 'query', 'post', 'args'] khi route khớp, null khi không khớp.
+	 *
+	 * @return array{0: bool, 1: mixed} [đã resolve?, giá trị]. Chưa resolve → container / manual DI tự inject.
+	 */
+	protected function resolveClassParam(\ReflectionParameter $param, string $className, $method, ?array $sources): array {
+		$name        = $param->getName();
+		$isConstruct = $method === '__wpspConstruct';
+
+		// 1) Request
+		$request = $this->resolveRequestForType($className);
+		if ($request !== null) {
+			if ($isConstruct) {
+				$this->assignConstructProperty($name, $request, $className);
+			}
+			return [true, $request];
 		}
 
-		if ($method === '__wpspConstruct' && class_exists($className)) {
-			return $this->injectConstructProperty($name, $className);
+		// 2) Model binding
+		if ($sources !== null) {
+			[$isModel, $model] = $this->resolveModelParam($param, $className, $sources);
+			if ($isModel) {
+				if ($isConstruct && is_object($model)) {
+					$this->assignConstructProperty($name, $model, $className);
+				}
+				return [true, $model];
+			}
 		}
 
-		return null;
+		// 3) __wpspConstruct
+		if ($isConstruct && class_exists($className)) {
+			$instance = $this->injectConstructProperty($name, $className);
+			if ($instance !== null) {
+				return [true, $instance];
+			}
+		}
+
+		return [false, null];
 	}
 
 	/**
@@ -1003,14 +1235,22 @@ trait RouteTrait {
 			return null;
 		}
 
+		$this->assignConstructProperty($name, $instance, $className);
+
+		return $instance;
+	}
+
+	/**
+	 * Gán giá trị thành property trong __wpspConstruct.
+	 * Gán lỗi = lỗi khai báo của dev → WP_DEBUG thì ném lại, ngược lại log.
+	 */
+	protected function assignConstructProperty(string $name, $value, string $className): void {
 		try {
-			$this->assignInjectedProperty($name, $instance);
+			$this->assignInjectedProperty($name, $value);
 		}
 		catch (\Throwable $e) {
 			$this->handleInjectionError($e, $className, $name, true);
 		}
-
-		return $instance;
 	}
 
 	/**
@@ -1051,7 +1291,7 @@ trait RouteTrait {
 	 * Xử lý lỗi auto-inject trong __wpspConstruct.
 	 *
 	 * - $rethrow + WP_DEBUG → ném LogicException (giữ exception gốc qua $previous).
-	 * - Còn lại             → log (logger của container nếu có, ngược lại error_log)
+	 * - Còn lại             → log (logger 'log' của container nếu có, ngược lại error_log)
 	 *                         + action "{app}_injection_failed".
 	 */
 	protected function handleInjectionError(\Throwable $e, string $className, string $name, bool $rethrow): void {
@@ -1064,12 +1304,9 @@ trait RouteTrait {
 			throw new \LogicException($message, 0, $e);
 		}
 
-		// Log: container 'log' (CORE, hoặc Lite nếu có) → error_log.
 		$logged = false;
 		try {
-			$app = (is_object($this->funcs) && method_exists($this->funcs, '_getApplication'))
-				? $this->funcs->_getApplication()
-				: null;
+			$app = $this->currentApp();
 
 			if ($app && method_exists($app, 'bound') && method_exists($app, 'make') && $app->bound('log')) {
 				$app->make('log')->error($message, ['exception' => $e]);
@@ -1085,28 +1322,32 @@ trait RouteTrait {
 
 		// Hook cho plugin tự xử lý (Sentry, Query Monitor...).
 		if (function_exists('do_action')) {
-			$prefix = (is_object($this->funcs) && method_exists($this->funcs, '_getAppShortName'))
-				? $this->funcs->_getAppShortName()
-				: 'wpsp';
-
-			do_action($prefix . '_injection_failed', $className, $name, $e, $this);
+			do_action($this->hookPrefix() . '_injection_failed', $className, $name, $e, $this);
 		}
 	}
+
+	/*
+	 * =====================================================================
+	 * WORDPRESS HOOK ARGS
+	 * =====================================================================
+	 */
 
 	/**
 	 * Map đối số WordPress hook (add_action / add_filter) vào signature theo thứ tự.
 	 *
 	 * - Param không type / type builtin → nhận đối số hiện tại.
 	 * - Param type class → chỉ nhận nếu đối số là instance của class đó (vd: \WP_Post $post),
-	 *   ngược lại để DI (vd: MyService $service) và KHÔNG tiêu thụ đối số.
+	 *   ngược lại để DI (vd: TestService $service, Request $request) và KHÔNG tiêu thụ đối số.
 	 * - Param nullable nhận được null từ WP → nhận null.
 	 * - Param variadic → nhận toàn bộ phần còn lại (key số).
 	 *
-	 * [SỬA LỖI] do_action() gọi KHÔNG có đối số (vd: hook trang admin của
-	 * add_menu_page(), wp_ajax_*, template_redirect...) vẫn truyền '' cho callback.
-	 * Bản cũ map '' vào param primitive đầu tiên với ưu tiên cao nhất, nên
-	 * edit($id) trên trang admin ?page=x&id=5 nhận '' thay vì 5.
-	 * '' đơn lẻ này giờ được coi là "không có hook args", TRỪ route Filters
+	 * Nhờ vậy cả 2 cách viết đều đúng:
+	 * - updatePost($post_id, $post, $update, Request $request, TestService $testService)
+	 * - updatePost(TestService $testService, $post_id, \WP_Post $post, $update, Request $request)
+	 *
+	 * do_action() gọi KHÔNG có đối số (hook trang admin của add_menu_page(),
+	 * wp_ajax_*, template_redirect...) vẫn truyền '' cho callback. '' đơn lẻ này
+	 * được coi là "không có hook args", TRỪ route Filters
 	 * (apply_filters('x', '') là giá trị thật cần giữ).
 	 *
 	 * @param \ReflectionParameter[] $parameters
@@ -1176,6 +1417,79 @@ trait RouteTrait {
 	}
 
 	/**
+	 * Gộp hook args của WordPress vào $callParams theo signature của callback.
+	 */
+	protected function withHookArgs($callback, array $callParams, array $wpParams): array {
+		if (empty($wpParams)) {
+			return $callParams;
+		}
+
+		try {
+			$reflection = $this->reflectCallable($callback);
+		}
+		catch (\Throwable $e) {
+			return $callParams;
+		}
+
+		return array_merge($callParams, $this->mapHookArgs($reflection->getParameters(), $wpParams));
+	}
+
+	/*
+	 * =====================================================================
+	 * ROUTE / REFLECTION
+	 * =====================================================================
+	 */
+
+	/**
+	 * Đưa route hiện tại vào request để callback có thể gọi $request->route('id').\
+	 * Ví dụ:
+	 * - /wpsp/posts/{id}
+	 *
+	 * Trong callback có thể gọi:
+	 *
+	 * public function posts(Request \$request) {\
+	 * ㅤ\$id = $request->route('id');\
+	 * }
+	 */
+	public function setRouteResolver() {
+		$route = $this->funcs->_getRouteManager()->currentRoute() ?? null;
+
+		if (!$route || !in_array($route->type, ['AdminPages', 'Apis', 'Ajaxs', 'FrontPages', 'RewriteFrontPages'])) {
+			return;
+		}
+
+		if (!method_exists($this->request, 'setRouteResolver')) {
+			return;
+		}
+
+		if (strtoupper($this->request->getMethod()) !== strtoupper($route->method)) {
+			return;
+		}
+
+		$requestPath = $this->request->getRequestUri();
+		$fullPath    = $route->fullPath;
+		$regexPath   = $this->funcs->_regexPath($fullPath, $route->args['force_regex'] ?? false);
+
+		if (
+			empty($regexPath)
+			|| !(
+				@preg_match('#' . $regexPath . '#iu', $requestPath)
+				|| @preg_match('#' . $fullPath . '#iu', $requestPath)
+			)
+		) {
+			return;
+		}
+
+		if (
+			@preg_match('/' . $route->fullPathRegex . '/iu', $requestPath)
+			|| @preg_match('/' . $fullPath . '/iu', $requestPath)
+			|| @preg_match($route->fullPathRegex, $requestPath)
+		) {
+			$this->request->setRouteResolver(fn() => $route);
+		}
+	}
+
+	/**
 	 * Reflection cho callable, cache theo Class::method (Closure không cache được).
 	 */
 	protected function reflectCallable($callbackOrClass, $method = null): \ReflectionFunctionAbstract {
@@ -1195,14 +1509,438 @@ trait RouteTrait {
 		return $cache[$class . '::' . $method] ??= new \ReflectionMethod($class, $method);
 	}
 
+	/**
+	 * Lấy tên class từ một ReflectionType.
+	 *
+	 * Chỉ các kiểu đối tượng (class/interface) mới được trả về. Các kiểu
+	 * dựng sẵn của PHP như string, int, bool, float, array... sẽ bị bỏ qua.
+	 * Đối với Union Type, hàm sẽ trả về class đầu tiên tìm thấy.
+	 *
+	 * Ví dụ:
+	 * - LoggerInterface      => "LoggerInterface"
+	 * - string               => null
+	 * - Logger|NullLogger    => "Logger"
+	 */
+	protected function getClassFromType(?\ReflectionType $type): ?string {
+		if ($type instanceof \ReflectionNamedType) {
+			return $type->isBuiltin() ? null : $type->getName();
+		}
+
+		if ($type instanceof \ReflectionUnionType) {
+			foreach ($type->getTypes() as $t) {
+				if ($t instanceof \ReflectionNamedType && !$t->isBuiltin()) {
+					return $t->getName();
+				}
+			}
+		}
+
+		return null;
+	}
+
 	/*
 	 * =====================================================================
-	 * MANUAL DI (khi container không có call())
+	 * RESOLVE & CALL
 	 * =====================================================================
 	 */
 
 	/**
-	 * Tự động Resolve Dependency Injection dựa trên Reflection.
+	 * Trả về Closure chứa callback đã được resolve Dependency Injection.
+	 */
+	public function resolveCallback($callback, $callParams = []) {
+		return $this->resolveAndCall($callback, $callParams, false);
+	}
+
+	/**
+	 * Call callback với Dependency Injection.\
+	 * "callParams" có thể được chuẩn bị bằng method getCallParams().
+	 *
+	 * - $call = true : gọi ngay, trả kết quả callback.
+	 * - $call = false: trả Closure để WordPress gọi sau (add_menu_page, add_action...).
+	 *   Closure này nhận hook args của WordPress và map vào signature.
+	 *
+	 * Ngữ cảnh container được gắn ngay (giữ hành vi cũ) VÀ gắn lại tại thời điểm
+	 * callback thực sự chạy, vì giữa 2 thời điểm đó plugin khác có thể đã chạy.
+	 */
+	public function resolveAndCall($callback, $callParams = [], $call = true, $method = null) {
+		// Set route resolver.
+//		$this->setRouteResolver();
+
+		$this->bindContainerContext();
+
+		if (!$call) {
+			return function(...$wpParams) use ($callback, $callParams) {
+				return $this->invokeResolved($callback, $this->withHookArgs($callback, (array)$callParams, $wpParams));
+			};
+		}
+
+		return $this->invokeResolved($callback, (array)$callParams);
+	}
+
+	/**
+	 * Gắn ngữ cảnh container rồi gọi callback với DI.
+	 */
+	protected function invokeResolved($callback, array $callParams) {
+		$this->bindContainerContext();
+
+		return $this->callWithContainer($callback, $this->paramsForContainerCall($callback, $callParams));
+	}
+
+	/**
+	 * Container kiểu Laravel (BoundMethod) nối MỌI param thừa (array_values) vào cuối
+	 * danh sách đối số. Với method thường, PHP bỏ qua đối số thừa nên vô hại. Nhưng
+	 * với method có tham số variadic (...$rest), $rest sẽ nhận cả path, full_path, route...
+	 *
+	 * Chỉ với callback CÓ variadic: giữ key là tên param của callback và key số
+	 * (hook args cho variadic), bỏ các key chuỗi thừa. Callback khác giữ nguyên.
+	 */
+	protected function paramsForContainerCall($callback, array $callParams): array {
+		try {
+			$parameters = $this->reflectCallable($callback)->getParameters();
+		}
+		catch (\Throwable $e) {
+			return $callParams;
+		}
+
+		$hasVariadic = false;
+		$names       = [];
+
+		foreach ($parameters as $param) {
+			$names[$param->getName()] = true;
+			if ($param->isVariadic()) {
+				$hasVariadic = true;
+			}
+		}
+
+		if (!$hasVariadic) {
+			return $callParams;
+		}
+
+		return array_filter($callParams, fn($k) => is_int($k) || isset($names[$k]), ARRAY_FILTER_USE_KEY);
+	}
+
+	/**
+	 * Trả về callback với Dependency Injection.\
+	 * Tự động hoàn toàn.
+	 */
+	public function autoResolveCallback($path, $fullPath, $requestPath, $callbackOrClass, $method = null, $args = []) {
+		return $this->autoResolveAndCall($path, $fullPath, $requestPath, $callbackOrClass, $method, $args, false);
+	}
+
+	/**
+	 * Gọi callback với Dependency Injection.\
+	 * Tự động hoàn toàn.
+	 */
+	public function autoResolveAndCall($path, $fullPath, $requestPath, $callbackOrClass, $method = null, $args = [], $call = true) {
+		$class  = is_array($callbackOrClass) ? $callbackOrClass[0] : $callbackOrClass;
+		$method = $method ?? (is_array($callbackOrClass) ? ($callbackOrClass[1] ?? null) : null);
+		$method = $method ?? '__instanceConstruct';
+
+		if ($class && $method && method_exists($class, $method)) {
+			$callback = $this->prepareCallbackFunction($method, $path, $fullPath, $class, $args);
+			return $this->resolveAndCall($callback, [], $call, $method);
+		}
+
+		return null;
+	}
+
+	/*
+	 * =====================================================================
+	 * UTILS
+	 * =====================================================================
+	 */
+
+	/**
+	 * Chuẩn hóa callback để trả về [class, method].
+	 */
+	public function normalizeCallback($callback) {
+		if ($callback instanceof \Closure) {
+			return [null, $callback];
+		}
+
+		if (is_array($callback) && is_object($callback[0]) && is_string($callback[1])) {
+			return [$callback[0], $callback[1]];
+		}
+
+		throw new \RuntimeException("Invalid callback format");
+	}
+
+	/**
+	 * Build params for callable (route callback).
+	 */
+	public function buildParametersForCallable($callback, $path, $fullPath, $requestPath, $args = [], $wpParams = []) {
+		[$class, $method] = $this->normalizeCallback($callback);
+
+		// Closure: normalizeCallback trả [null, Closure] → reflect chính Closure.
+		if ($class === null) {
+			return $this->getCallParams($path, $fullPath, $requestPath, $method, null, $args, $wpParams);
+		}
+
+		return $this->getCallParams($path, $fullPath, $requestPath, $class, $method, $args, $wpParams);
+	}
+
+	/*
+	 * =====================================================================
+	 * RIÊNG CỦA BẢN LITE (PHP thuần + WordPress core)
+	 * =====================================================================
+	 *
+	 * Cùng tên, cùng vai trò, cùng thứ tự với section tương ứng của bản CORE.
+	 */
+
+	/**
+	 * Response mặc định mà $next trả về cho middleware.
+	 */
+	protected function makeNextResponse() {
+		return new \WP_HTTP_Response('OK', 200);
+	}
+
+	/**
+	 * Khởi tạo class với DI constructor.
+	 * Container Lite có make() thì dùng, ngược lại manual DI (manualMakeClass()).
+	 */
+	protected function containerMake(string $class) {
+		$app = $this->currentApp();
+
+		return ($app && method_exists($app, 'make'))
+			? $app->make($class)
+			: $this->manualMakeClass($class);
+	}
+
+	/**
+	 * Gọi callback với DI (theo tên param, type-hint, default value).
+	 * Container Lite có call() thì dùng, ngược lại manual DI (manualResolveAndCall()).
+	 */
+	protected function callWithContainer($callback, array $params) {
+		$app = $this->currentApp();
+
+		return ($app && method_exists($app, 'call'))
+			? $app->call($callback, $params)
+			: $this->manualResolveAndCall($callback, $params);
+	}
+
+	/**
+	 * Đồng bộ Lite Facade về container của plugin hiện tại.
+	 *
+	 * Lite không có Container::setInstance() / Model resolver toàn cục. Lite Facade
+	 * lấy root qua $this->funcs->_getApplication() nên vốn đã tách theo plugin;
+	 * bước này chỉ là lớp bảo vệ cho Facade dùng state static.
+	 *
+	 * Chỉ ghi khi khác, và xoá cache resolved instance khi đổi container
+	 * (nếu Lite Facade có các method tương ứng).
+	 */
+	protected function bindContainerContext(): void {
+		$container = $this->currentApp();
+
+		if (!$container) {
+			return;
+		}
+
+		$facade = \WPSPCORELITE\App\Support\Facades\Facade::class;
+
+		if (!class_exists($facade) || !method_exists($facade, 'setFacadeApplication')) {
+			return;
+		}
+
+		if (method_exists($facade, 'getFacadeApplication') && $facade::getFacadeApplication() === $container) {
+			return;
+		}
+
+		if (method_exists($facade, 'clearResolvedInstances')) {
+			$facade::clearResolvedInstances();
+		}
+
+		$facade::setFacadeApplication($container);
+	}
+
+	/**
+	 * Nếu $className là Lite Request (kể cả class con) thì trả về request hiện tại; ngược lại null.
+	 *
+	 * - Type là class cha của request hiện tại → trả về chính instance đó.
+	 * - Type là class con → createFrom() (nếu có) để chép dữ liệu sang, cache theo request + class.
+	 *
+	 * Cache dùng WeakMap theo request object: spl_object_id() được tái sử dụng sau khi
+	 * request cũ bị giải phóng, nên request mới có thể nhận nhầm bản copy của request cũ.
+	 */
+	protected function resolveRequestForType(string $className) {
+		if (!is_a($className, Request::class, true)) {
+			return null;
+		}
+
+		$current = $this->resolveCurrentRequest();
+
+		if (!$current) {
+			return null;
+		}
+
+		if ($current instanceof $className) {
+			return $current;
+		}
+
+		if (!method_exists($className, 'createFrom')) {
+			return null;
+		}
+
+		static $copies = null;
+		$copies ??= new \WeakMap();
+
+		$perRequest = $copies[$current] ?? [];
+
+		if (!isset($perRequest[$className])) {
+			try {
+				$perRequest[$className] = $className::createFrom($current);
+			}
+			catch (\Throwable $e) {
+				return null;
+			}
+			$copies[$current] = $perRequest;
+		}
+
+		return $perRequest[$className];
+	}
+
+	/**
+	 * Lite không có ORM → không có model binding.
+	 *
+	 * @return array{0: bool, 1: mixed} Luôn [false, null].
+	 */
+	protected function resolveModelParam(\ReflectionParameter $param, string $className, array $sources): array {
+		return [false, null];
+	}
+
+	/**
+	 * Lite ThrottleRequests với RateLimiter của plugin.
+	 * Báo cho dev khi dùng named limiter chưa khai báo.
+	 */
+	protected function makeThrottleMiddleware(array $parameters) {
+		$limiter = $this->throttleRateLimiter();
+
+		$this->warnUnknownNamedLimiter($limiter, $parameters);
+
+		return new ThrottleRequests($limiter);
+	}
+
+	/**
+	 * Throttle vượt giới hạn / lỗi → dừng request.
+	 *
+	 * - ThrottleRequestsException → 429 (xem respondTooManyRequests()).
+	 * - Lỗi khác → 500 (message chỉ hiện khi WP_DEBUG).
+	 */
+	protected function respondThrottleFailure(\Throwable $e): void {
+		if ($e instanceof ThrottleRequestsException) {
+			$this->respondTooManyRequests($e);
+		}
+
+		$this->abortWithStatus($this->safeErrorMessage($e), 500, '500 - Internal Server Error.');
+	}
+
+	/**
+	 * Dừng request với status code: JSON nếu client muốn JSON, ngược lại wp_die().\
+	 * Luôn dừng hẳn để không có output nào bị nối thêm sau response lỗi.
+	 */
+	protected function abortWithStatus(string $message, int $status, string $title, array $headers = []): void {
+		if ($this->funcs->_wantsJson()) {
+			$this->sendHeaders($headers);
+			wp_send_json($this->funcs->_response(false, $message, $status), $status);
+			exit;
+		}
+
+		$this->sendHeaders($headers);
+
+		wp_die($message, $title, [
+			'back_link' => true,
+			'response'  => $status,
+		]);
+
+		exit;
+	}
+
+	/*
+	 * ---------------------------------------------------------------------
+	 * Chỉ có ở bản LITE
+	 * ---------------------------------------------------------------------
+	 */
+
+	/**
+	 * RateLimiter của plugin: binding 'rate.limiter' của Application (chứa named limiters khai báo trong
+	 * AppServiceProvider). Không có binding → tạo từ cache của plugin.
+	 */
+	protected function throttleRateLimiter(): \WPSPCORELITE\App\Cache\RateLimiter {
+		$app = $this->currentApp();
+
+		if ($app && method_exists($app, 'bound') && method_exists($app, 'make')) {
+			if ($app->bound('rate.limiter')) {
+				return $app->make('rate.limiter');
+			}
+
+			if ($app->bound('cache')) {
+				$cache = $app->make('cache');
+				return new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
+			}
+		}
+
+		// Không có container: cache của plugin theo mainPath (prefix = tên thư mục plugin).
+		static $fallback = [];
+
+		$mainPath = property_exists($this, 'mainPath') ? $this->mainPath : null;
+		$key      = (string)$mainPath;
+
+		if (!isset($fallback[$key])) {
+			$cache          = new \WPSPCORELITE\App\Cache\Cache($mainPath);
+			$fallback[$key] = new \WPSPCORELITE\App\Cache\RateLimiter($cache->store($cache->getConfig('limiter') ?: null));
+		}
+
+		return $fallback[$key];
+	}
+
+	/**
+	 * 'throttle:30rpm' mà chưa khai báo RateLimiter::for('30rpm') → giống Laravel, ThrottleRequests hiểu
+	 * thành (int)'30rpm' = 30 / phút. Báo cho dev biết (WP_DEBUG) thay vì im lặng.
+	 */
+	protected function warnUnknownNamedLimiter(\WPSPCORELITE\App\Cache\RateLimiter $limiter, array $parameters): void {
+		$name = $parameters[0] ?? null;
+
+		if ($name === null || is_numeric($name) || str_contains($name, '|') || $limiter->limiter($name) !== null) {
+			return;
+		}
+
+		if (function_exists('_doing_it_wrong')) {
+			_doing_it_wrong(
+				'throttle:' . esc_html($name),
+				sprintf('Rate limiter [%s] chưa được khai báo. Hãy gọi RateLimiter::for(\'%s\', ...) trong AppServiceProvider::boot().', esc_html($name), esc_html($name)),
+				''
+			);
+		}
+	}
+
+	/**
+	 * Trả 429. Limit::response() có thể trả về:
+	 * - \WP_HTTP_Response / \WP_REST_Response / object có get_status() → gửi đúng status, header, data.
+	 * - chuỗi → dùng làm thông báo lỗi.
+	 * - mảng → JSON.
+	 * Không có response riêng → thông báo mặc định (JSON hoặc wp_die).
+	 */
+	protected function respondTooManyRequests(ThrottleRequestsException $e): void {
+		$custom  = $e->getResponse();
+		$headers = $e->getHeaders();
+
+		if (is_object($custom) && method_exists($custom, 'get_status')) {
+			$this->sendHeaders(array_merge($headers, method_exists($custom, 'get_headers') ? (array)$custom->get_headers() : []));
+			wp_send_json(method_exists($custom, 'get_data') ? $custom->get_data() : null, (int)$custom->get_status());
+			exit;
+		}
+
+		if (is_array($custom)) {
+			$this->sendHeaders($headers);
+			wp_send_json($custom, 429);
+			exit;
+		}
+
+		$message = is_string($custom) && $custom !== '' ? $custom : $e->getMessage();
+
+		$this->abortWithStatus($message, 429, '429 - Too Many Requests.', $headers);
+	}
+
+	/**
+	 * Manual DI dựa trên Reflection (khi container không có call()).
 	 *
 	 * Thứ tự cho mỗi param: variadic (key số) → có sẵn trong $callParams
 	 * → Request → instance cùng type trong $callParams → tự make class
@@ -1309,272 +2047,45 @@ trait RouteTrait {
 	}
 
 	/*
-	 * =====================================================================
-	 * ROUTE / REQUEST
-	 * =====================================================================
+	 * ---------------------------------------------------------------------
+	 * Tương thích ngược (bản LITE cũ). Plugin con có thể đang gọi các method này.
+	 * ---------------------------------------------------------------------
 	 */
 
 	/**
-	 * Đưa route hiện tại vào request để callback có thể gọi $request->route('id').
+	 * @deprecated Dùng requestStash().
 	 */
-	public function setRouteResolver() {
-		$route = $this->funcs->_getRouteManager()->currentRoute() ?? null;
-
-		if (!$route || !in_array($route->type, ['AdminPages', 'Apis', 'Ajaxs', 'FrontPages', 'RewriteFrontPages'])) {
-			return;
+	protected function requestMemo($request, string $key, ?bool $value = null): ?bool {
+		if (func_num_args() >= 3) {
+			$this->requestStash($request, $key, $value);
+			return $value;
 		}
 
-		if (!method_exists($this->request, 'setRouteResolver')) {
-			return;
-		}
+		$cached = $this->requestStash($request, $key);
 
-		if ($this->request->getMethod() !== strtoupper($route->method)) {
-			return;
-		}
-
-		$requestPath = $this->request->getRequestUri();
-		$fullPath    = $route->fullPath;
-		$regexPath   = $this->funcs->_regexPath($fullPath, $route->args['force_regex'] ?? false);
-
-		if (
-			empty($regexPath)
-			|| !(
-				@preg_match('#' . $regexPath . '#iu', $requestPath)
-				|| @preg_match('#' . $fullPath . '#iu', $requestPath)
-			)
-		) {
-			return;
-		}
-
-		if (
-			@preg_match('/' . $route->fullPathRegex . '/iu', $requestPath)
-			|| @preg_match('/' . $fullPath . '/iu', $requestPath)
-			|| @preg_match($route->fullPathRegex, $requestPath)
-		) {
-			$this->request->setRouteResolver(fn() => $route);
-		}
+		return $cached === null ? null : (bool)$cached;
 	}
 
 	/**
-	 * Nếu $className là Lite Request (kể cả class con) thì trả về request hiện tại; ngược lại null.
-	 *
-	 * - Type là class cha của request hiện tại → trả về chính instance đó.
-	 * - Type là class con → createFrom() (nếu có) để chép dữ liệu sang, cache theo request + class.
-	 *
-	 * [SỬA LỖI] Cache dùng WeakMap theo request object (giống requestMemo()).
-	 * Bản cũ dùng spl_object_id(): id được tái sử dụng sau khi request cũ bị
-	 * giải phóng, nên request mới có thể nhận nhầm bản copy (dữ liệu cũ) của request cũ.
+	 * @deprecated Dùng resolveClassParam().
 	 */
-	protected function resolveRequestForType(string $className) {
-		if (!is_a($className, \WPSPCORELITE\App\Http\Request::class, true)) {
-			return null;
+	protected function resolveSpecialClassParam(string $name, string $className, $method) {
+		if ($requestInstance = $this->resolveRequestForType($className)) {
+			return $requestInstance;
 		}
 
-		$current = $this->resolveCurrentRequest();
-
-		if (!$current) {
-			return null;
-		}
-
-		if ($current instanceof $className) {
-			return $current;
-		}
-
-		if (!method_exists($className, 'createFrom')) {
-			return null;
-		}
-
-		static $copies = null;
-		$copies ??= new \WeakMap();
-
-		$perRequest = $copies[$current] ?? [];
-
-		if (!isset($perRequest[$className])) {
-			try {
-				$perRequest[$className] = $className::createFrom($current);
-			}
-			catch (\Throwable $e) {
-				return null;
-			}
-			$copies[$current] = $perRequest;
-		}
-
-		return $perRequest[$className];
-	}
-
-	/**
-	 * Lấy tên class từ một ReflectionType (bỏ qua builtin; union type → class đầu tiên).
-	 *
-	 * Ví dụ:
-	 * - LoggerInterface      => "LoggerInterface"
-	 * - string               => null
-	 * - Logger|NullLogger    => "Logger"
-	 */
-	protected function getClassFromType(?\ReflectionType $type): ?string {
-		if ($type instanceof \ReflectionNamedType) {
-			return $type->isBuiltin() ? null : $type->getName();
-		}
-
-		if ($type instanceof \ReflectionUnionType) {
-			foreach ($type->getTypes() as $t) {
-				if ($t instanceof \ReflectionNamedType && !$t->isBuiltin()) {
-					return $t->getName();
-				}
-			}
+		if ($method === '__wpspConstruct' && class_exists($className)) {
+			return $this->injectConstructProperty($name, $className);
 		}
 
 		return null;
 	}
 
-	/*
-	 * =====================================================================
-	 * RESOLVE & CALL
-	 * =====================================================================
-	 */
-
 	/**
-	 * Trả về Closure chứa callback đã được resolve Dependency Injection.
-	 */
-	public function resolveCallback($callback, $callParams = []) {
-		return $this->resolveAndCall($callback, $callParams, false);
-	}
-
-	/**
-	 * Call callback với Dependency Injection.
-	 *
-	 * Khi $call = false: trả về Closure nhận hook args của WordPress,
-	 * container/facade được đồng bộ TẠI THỜI ĐIỂM GỌI (không phải lúc tạo closure).
-	 */
-	public function resolveAndCall($callback, $callParams = [], $call = true, $method = null) {
-		if (!$call) {
-			return function(...$wpParams) use ($callback, $callParams) {
-				return $this->invokeResolved($callback, $this->withHookArgs($callback, (array)$callParams, $wpParams));
-			};
-		}
-
-		return $this->invokeResolved($callback, (array)$callParams);
-	}
-
-	/**
-	 * Gọi callback qua container (nếu có call()) hoặc manual resolver.
-	 * Luôn đồng bộ ngữ cảnh container ngay trước khi gọi.
-	 */
-	protected function invokeResolved($callback, array $callParams) {
-		$container = $this->currentApp();
-
-		if ($container) {
-			$this->syncContainerState($container);
-
-			if (method_exists($container, 'call')) {
-				return $container->call($callback, $callParams);
-			}
-		}
-
-		return $this->manualResolveAndCall($callback, $callParams);
-	}
-
-	/**
-	 * Gộp hook args của WordPress vào $callParams theo signature của callback.
-	 */
-	protected function withHookArgs($callback, array $callParams, array $wpParams): array {
-		if (empty($wpParams)) {
-			return $callParams;
-		}
-
-		try {
-			$reflection = $this->reflectCallable($callback);
-		}
-		catch (\Throwable $e) {
-			return $callParams;
-		}
-
-		return array_merge($callParams, $this->mapHookArgs($reflection->getParameters(), $wpParams));
-	}
-
-	/**
-	 * Đồng bộ Lite Facade về container của plugin hiện tại.\
-	 * Chỉ ghi khi khác, và xoá cache resolved instance khi đổi container
-	 * (nếu Lite Facade có các method tương ứng).
-	 *
-	 * Lite Facade lấy root qua $this->funcs->_getApplication() nên vốn đã tách
-	 * theo plugin; bước này chỉ là lớp bảo vệ cho Facade dùng state static.
+	 * @deprecated Dùng bindContainerContext().
 	 */
 	protected function syncContainerState($container): void {
-		$facade = \WPSPCORELITE\App\Support\Facades\Facade::class;
-
-		if (!class_exists($facade) || !method_exists($facade, 'setFacadeApplication')) {
-			return;
-		}
-
-		if (method_exists($facade, 'getFacadeApplication') && $facade::getFacadeApplication() === $container) {
-			return;
-		}
-
-		if (method_exists($facade, 'clearResolvedInstances')) {
-			$facade::clearResolvedInstances();
-		}
-
-		$facade::setFacadeApplication($container);
-	}
-
-	/**
-	 * Trả về callback với Dependency Injection.\
-	 * Tự động hoàn toàn.
-	 */
-	public function autoResolveCallback($path, $fullPath, $requestPath, $callbackOrClass, $method = null, $args = []) {
-		return $this->autoResolveAndCall($path, $fullPath, $requestPath, $callbackOrClass, $method, $args, false);
-	}
-
-	/**
-	 * Gọi callback với Dependency Injection.\
-	 * Tự động hoàn toàn.
-	 */
-	public function autoResolveAndCall($path, $fullPath, $requestPath, $callbackOrClass, $method = null, $args = [], $call = true) {
-		$class  = is_array($callbackOrClass) ? $callbackOrClass[0] : $callbackOrClass;
-		$method = $method ?? (is_array($callbackOrClass) ? ($callbackOrClass[1] ?? null) : null);
-		$method = $method ?? '__instanceConstruct';
-
-		if ($class && method_exists($class, $method)) {
-			$callback = $this->prepareCallbackFunction($method, $path, $fullPath, $class, $args);
-			return $this->resolveAndCall($callback, [], $call, $method);
-		}
-
-		return null;
-	}
-
-	/*
-	 * =====================================================================
-	 * UTILS
-	 * =====================================================================
-	 */
-
-	/**
-	 * Chuẩn hóa callback để trả về [class, method].
-	 */
-	public function normalizeCallback($callback) {
-		if ($callback instanceof \Closure) {
-			return [null, $callback];
-		}
-
-		if (is_array($callback) && is_object($callback[0]) && is_string($callback[1])) {
-			return [$callback[0], $callback[1]];
-		}
-
-		throw new \RuntimeException("Invalid callback format");
-	}
-
-	/**
-	 * Build params for callable (route callback).
-	 */
-	public function buildParametersForCallable($callback, $path, $fullPath, $requestPath, $args = [], $wpParams = []) {
-		[$class, $method] = $this->normalizeCallback($callback);
-
-		// Closure: normalizeCallback trả [null, Closure] → reflect chính Closure.
-		if ($class === null) {
-			return $this->getCallParams($path, $fullPath, $requestPath, $method, null, $args, $wpParams);
-		}
-
-		return $this->getCallParams($path, $fullPath, $requestPath, $class, $method, $args, $wpParams);
+		$this->bindContainerContext();
 	}
 
 }
