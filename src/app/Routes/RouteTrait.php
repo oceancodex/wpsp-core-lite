@@ -528,7 +528,7 @@ trait RouteTrait {
 	 * - response là redirect về CHÍNH URL đang truy cập (sẽ thành vòng lặp redirect vô hạn,
 	 *   vd: back() khi không có trang trước, redirect()->refresh());
 	 * - filter "{app}_send_blocked_middleware_response" trả false (tắt hẳn tính năng):
-	 *       add_filter('wpsp_send_blocked_middleware_response', '__return_false');
+	 *       add_filter('{app}_send_blocked_middleware_response', '__return_false');
 	 *
 	 * Action "{app}_before_send_middleware_response" chạy ngay trước khi gửi:
 	 * nếu session được lưu ở cuối request bằng cơ chế riêng, có thể lưu tại đây
@@ -841,12 +841,23 @@ trait RouteTrait {
 	}
 
 	/**
-	 * Prefix cho action / filter của plugin hiện tại (vd: "wpsp").
+	 * Prefix "{app}" của plugin hiện tại = Funcs::_getAppShortName().
+	 *
+	 * Dùng cho tên action / filter VÀ key lưu dữ liệu theo request (requestStash()).
+	 * Mỗi plugin tạo bằng composer create-project từ WPSP / WPSPLITE có app short name
+	 * riêng → hook và key không đụng nhau giữa các plugin.
+	 *
+	 * Vì sao key cũng cần prefix: requestStash() dùng static WeakMap trong trait. Class
+	 * dùng trait (BaseInstances) chỉ nạp 1 lần cho cả process dù nhiều plugin cùng require
+	 * core → các plugin dùng CHUNG biến static đó. Thiếu prefix, plugin này sẽ đọc nhầm
+	 * kết quả throttle / response bị chặn của plugin kia trên cùng request.
+	 *
+	 * Không có funcs (hiếm) → defaultHookPrefix() của từng bản.
 	 */
 	protected function hookPrefix(): string {
 		return (is_object($this->funcs) && method_exists($this->funcs, '_getAppShortName'))
 			? $this->funcs->_getAppShortName()
-			: 'wpsp_lite';
+			: $this->defaultHookPrefix();
 	}
 
 	/*
@@ -1888,6 +1899,13 @@ trait RouteTrait {
 		]);
 
 		exit;
+	}
+
+	/**
+	 * Prefix dự phòng khi không có funcs (xem hookPrefix()).
+	 */
+	protected function defaultHookPrefix(): string {
+		return 'wpsp_lite';
 	}
 
 	/*
