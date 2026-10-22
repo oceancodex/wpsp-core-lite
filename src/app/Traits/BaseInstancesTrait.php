@@ -95,13 +95,10 @@ trait BaseInstancesTrait {
 	public function prepareRequest() {
 		if ($this->request) return;
 
-		if (isset($this->funcs) && $funcs = $this->funcs) {
-			if (isset($funcs::$request) && $funcs::$request) {
-				$this->request = $funcs::$request;
-			}
-			else {
-				$this->request = $funcs->_getApplication('request');
-			}
+		if ($funcs = $this->funcs) {
+			$this->request = (isset($funcs::$request) && $funcs::$request)
+				? $funcs::$request
+				: $funcs->_getApplication('request');
 		}
 		else {
 			$this->request = WPSPCORE_Request::capture();
@@ -132,9 +129,8 @@ trait BaseInstancesTrait {
 		if ($class) {
 			return $this->autoResolveAndCall($path, $fullPath, $requestPath, $class, $method, $args);
 		}
-		else {
-			return $this->autoResolveAndCall($path, $fullPath, $requestPath, $this, $method, $args);
-		}
+
+		return $this->autoResolveAndCall($path, $fullPath, $requestPath, $this, $method, $args);
 	}
 
 }

@@ -5,7 +5,7 @@ namespace WPSPCORELITE\App\Routes\AdminBarMenus;
 use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
- * @method static $this admin_bar_menu(string $name, callable|array $callback, array $args = [])
+ * @method static $this admin_bar_menu(string $id, callable|array $callback, array $args = [])
  */
 class AdminBarMenus extends BaseRoute {
 
