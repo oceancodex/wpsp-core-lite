@@ -31,7 +31,7 @@ class {{ class_name }} extends BaseRewriteFrontPage {
 	 */
 
 	public function customProperties() {
-//		$this->path = 'wpsp\/([^\/]+)\/?$';
+//		$this->path = 'wpsp-lite\/([^\/]+)\/?$';
 	}
 
 	/*

@@ -1,1 +1,1 @@
-		Route::{{ method }}('{{ path }}', [ApisController::class, 'wpsp'])->namespace('{{ namespace }}')->version('{{ version }}');
+		Route::{{ method }}('{{ path }}', [ApisController::class, 'wpsp_lite'])->namespace('{{ namespace }}')->version('{{ version }}');

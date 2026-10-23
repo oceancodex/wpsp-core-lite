@@ -14,6 +14,7 @@ use WPSPCORELITE\BaseInstances;
  * @method static $this namespace(string $namespace)
  * @method static $this version(string $version)
  * @method static $this middleware(array|string ...$middlewares)
+ * @method static $this can(\UnitEnum|string $ability, array|string $models = [])
  */
 abstract class BaseRoute extends BaseInstances {
 
@@ -28,7 +29,7 @@ abstract class BaseRoute extends BaseInstances {
 	public $defaultVersion   = null;
 
 	/**
-	 * Instance ví dụ: \WPSP\App\Instances\Routes\Apis
+	 * Instance ví dụ: \WPSPLITE\App\Instances\Routes\Apis
 	 */
 	public static $instance = null;
 
@@ -167,7 +168,7 @@ abstract class BaseRoute extends BaseInstances {
 
 	/**
 	 * Nếu gọi static method, chuyển sang method thông thường với instance.\
-	 * Instance ví dụ: \WPSP\App\Instances\Routes\Apis
+	 * Instance ví dụ: \WPSPLITE\App\Instances\Routes\Apis
 	 */
 	public static function __callStatic($method, $arguments) {
 		return static::instance()->__call($method, $arguments);
