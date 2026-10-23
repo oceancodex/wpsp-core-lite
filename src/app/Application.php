@@ -8,6 +8,7 @@
 
 namespace WPSPCORELITE\App;
 
+use WPSPCORELITE\App\Auth\Access\Gate;
 use WPSPCORELITE\App\Cache\Cache as CacheCore;
 use WPSPCORELITE\App\Cache\CacheManager;
 use WPSPCORELITE\App\Cache\Contracts\Factory as CacheFactory;
@@ -24,7 +25,9 @@ use WPSPCORELITE\App\Support\Facades\Facade;
  * Application - mô phỏng Illuminate\Foundation\Application bằng PHP thuần.
  *
  * - Container đầy đủ (kế thừa Container).
- * - Bindings sẵn có: 'app', 'request', 'files', 'config', 'cache', 'cache.store', 'rate.limiter', 'commands', 'path.*'.
+ * - Bindings sẵn có: 'app', 'request', 'files', 'config', 'cache', 'cache.store', 'rate.limiter', 'gate', 'commands', 'path.*'.
+ * - 'gate' = Gate (Policy / define / capability WordPress) riêng của Application này, dùng cho can: của route
+ *   và facade Gate (xem createGate()).
  * - 'cache' = CacheManager riêng của Application này (mỗi plugin một Application => một cache riêng),
  *   config từ config('cache'), prefix mặc định = tên thư mục plugin (xem createCacheManager()).
  * - 'config' nạp lười (lần make đầu tiên) toàn bộ file trong configPath() (mặc định <basePath>/config).
@@ -210,6 +213,12 @@ class Application extends Container {
 			return $app->createRateLimiter();
 		});
 
+		// Giống Illuminate\Auth\AuthServiceProvider::registerAccessGate(): Gate riêng của plugin này.
+		// RouteTrait (can:, ->can(), controller middleware) và facade Gate đều lấy cùng object này.
+		$this->singleton('gate', function($app) {
+			return $app->createGate();
+		});
+
 		$this->singleton('commands', function($app) {
 			return new Commands($app);
 		});
@@ -248,6 +257,7 @@ class Application extends Container {
 			'cache'       => [CacheManager::class, CacheCore::class, CacheFactory::class],
 			'cache.store'  => [CacheRepository::class, CacheRepositoryContract::class],
 			'rate.limiter' => [RateLimiter::class],
+			'gate'         => [Gate::class],
 			'commands'    => [Commands::class],
 		];
 
@@ -307,6 +317,83 @@ class Application extends Container {
 		}
 
 		return new $class($this->make('cache')->store(is_string($store) && $store !== '' ? $store : null));
+	}
+
+	/*
+	 * ---
+	 * Gate.
+	 * ---
+	 */
+
+	/**
+	 * Tạo Gate cho Application này.
+	 *
+	 * - User: wp_get_current_user() (khách = null).
+	 * - hook_prefix: tên ngắn của plugin (Funcs::_getAppShortName()), không có thì theo tên thư mục plugin
+	 *   => filter "{prefix}_gate_result" riêng từng plugin.
+	 * - Tự đoán Policy trong {RootNamespace}\App\Policies trước (vd: WPSPLITE\App\Policies\PostPolicy).
+	 * - Policy được khởi tạo qua container => constructor của Policy có DI.
+	 * - Config (tuỳ chọn, file <configPath>/auth.php):
+	 *     'policies'            => [\WP_Post::class => \WPSPLITE\App\Policies\PostPolicy::class],
+	 *     'capability_fallback' => true,   // không có Policy / define → user_can()
+	 *     'policy_namespaces'   => [...],  // thêm namespace để đoán Policy
+	 *     'gate_class'          => \WPSPLITE\App\Widen\Auth\Gate::class, // phải kế thừa \WPSPCORELITE\App\Auth\Access\Gate
+	 *
+	 * Plugin muốn tự tạo Gate: $app->singleton('gate', fn($app) => ...) trong provider của plugin.
+	 */
+	protected function createGate() {
+		$class = $this->configValue('auth.gate_class') ?? Gate::class;
+
+		if (!is_string($class) || !is_a($class, Gate::class, true)) {
+			$class = Gate::class;
+		}
+
+		$funcs         = $this->bound('funcs') ? $this->make('funcs') : null;
+		$rootNamespace = $this->funcsValue($funcs, '_getRootNamespace');
+		$namespaces    = (array)$this->configValue('auth.policy_namespaces', []);
+
+		if ($rootNamespace) {
+			array_unshift($namespaces, trim($rootNamespace, '\\') . '\\App\\Policies');
+		}
+
+		$policies = $this->configValue('auth.policies', []);
+
+		return new $class(null, [
+			'hook_prefix'         => $this->funcsValue($funcs, '_getAppShortName') ?: $this->gateHookPrefix(),
+			'capability_fallback' => filter_var($this->configValue('auth.capability_fallback', true), FILTER_VALIDATE_BOOLEAN),
+			'policy_namespaces'   => $namespaces,
+			'policy_resolver'     => function($policy) {
+				return $this->make($policy);
+			},
+			'policies'            => is_array($policies) ? $policies : [],
+		]);
+	}
+
+	/**
+	 * Gọi 1 method của Funcs, không ném lỗi (Funcs có thể chưa sẵn sàng khi chạy console).
+	 */
+	protected function funcsValue($funcs, $method) {
+		if (!is_object($funcs) || !method_exists($funcs, $method)) {
+			return null;
+		}
+
+		try {
+			$value = $funcs->{$method}();
+		}
+		catch (\Throwable $e) {
+			return null;
+		}
+
+		return is_string($value) && $value !== '' ? $value : null;
+	}
+
+	/**
+	 * Prefix hook dự phòng: tên thư mục plugin (plugins/plugin-cua-toi => "plugin_cua_toi").
+	 */
+	protected function gateHookPrefix() {
+		$name = strtolower(preg_replace('/[^A-Za-z0-9]+/', '_', basename((string)$this->basePath())));
+
+		return trim($name, '_') ?: null;
 	}
 
 	/*

@@ -1,1 +1,1 @@
-		Route::{{ method }}('{{ path }}', [ApisController::class, 'wpsp']);
+		Route::{{ method }}('{{ path }}', [ApisController::class, 'wpsp_lite']);
