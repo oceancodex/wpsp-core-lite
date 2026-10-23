@@ -2,9 +2,12 @@
 
 namespace WPSPCORELITE\App\WordPress\FrontPages;
 
+use WPSPCORELITE\App\Traits\InstanceMiddlewareTrait;
 use WPSPCORELITE\BaseInstances;
 
 abstract class BaseFrontPage extends BaseInstances {
+
+	use InstanceMiddlewareTrait;
 
 	public $path                     = null;
 	public $fullPath                 = null;
