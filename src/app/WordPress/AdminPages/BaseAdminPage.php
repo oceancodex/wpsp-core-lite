@@ -2,11 +2,12 @@
 
 namespace WPSPCORELITE\App\WordPress\AdminPages;
 
+use WPSPCORELITE\App\Traits\InstanceMiddlewareTrait;
 use WPSPCORELITE\BaseInstances;
 
 abstract class BaseAdminPage extends BaseInstances {
 
-	use AdminPageTrait, AdminPageScreenOptionsTrait, AdminPageMetaBoxesTrait;
+	use AdminPageTrait, AdminPageScreenOptionsTrait, AdminPageMetaBoxesTrait, InstanceMiddlewareTrait;
 
 	/**
 	 * WordPress admin page properties.

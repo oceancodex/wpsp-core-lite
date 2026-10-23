@@ -3,7 +3,7 @@
 namespace WPSPCORELITE\App\Traits;
 
 use WPSPCORELITE\App\Routes\RouteTrait;
-use WPSPCORELITE\App\Http\Request as WPSPCORE_Request;
+use WPSPCORELITE\App\Http\Request as WPSPCORELITE_Request;
 
 /**
  * BaseInstancesTrait.
@@ -101,7 +101,7 @@ trait BaseInstancesTrait {
 				: $funcs->_getApplication('request');
 		}
 		else {
-			$this->request = WPSPCORE_Request::capture();
+			$this->request = WPSPCORELITE_Request::capture();
 		}
 
 		unset($this->extraParams['request']);

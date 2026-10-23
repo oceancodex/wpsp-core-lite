@@ -18,7 +18,7 @@ use WPSPCORELITE\App\Cache\Repository as CacheRepository;
 use WPSPCORELITE\App\Config\LoadConfiguration;
 use WPSPCORELITE\App\Config\Repository as ConfigRepository;
 use WPSPCORELITE\App\Filesystem\Filesystem;
-use WPSPCORELITE\App\Http\Request as WPSPCORE_Http_Request;
+use WPSPCORELITE\App\Http\Request as WPSPCORELITE_Request;
 use WPSPCORELITE\App\Support\Facades\Facade;
 
 /**
@@ -185,7 +185,7 @@ class Application extends Container {
 		$this->instance('app', $this);
 
 		$this->singleton('request', function() {
-			return WPSPCORE_Http_Request::capture();
+			return WPSPCORELITE_Request::capture();
 		});
 
 		// Giống Illuminate\Filesystem\FilesystemServiceProvider::registerNativeFilesystem().
@@ -234,7 +234,7 @@ class Application extends Container {
 	 */
 	protected function registerRequestSubclassResolving() {
 		$this->resolving(function($object, $app) {
-			$isRequest = $object instanceof WPSPCORE_Http_Request;
+			$isRequest = $object instanceof WPSPCORELITE_Request;
 
 			if (!$isRequest) {
 				return;
@@ -251,7 +251,7 @@ class Application extends Container {
 	protected function registerCoreContainerAliases() {
 		$aliases = [
 			'app'         => array_unique([self::class, static::class, Container::class]),
-			'request'     => [WPSPCORE_Http_Request::class],
+			'request'     => [WPSPCORELITE_Request::class],
 			'files'       => [Filesystem::class],
 			'config'      => [ConfigRepository::class],
 			'cache'       => [CacheManager::class, CacheCore::class, CacheFactory::class],
