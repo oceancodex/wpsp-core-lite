@@ -160,13 +160,13 @@ class {{ class_name }} extends BaseAdminPage {
 //			'side' => [
 //				'submitdiv' => [
 //					'title' => 'Submit',
-//					'view'  => 'admin-pages.wpsp.settings.submit',
+//					'view'  => 'admin-pages.wpsp_lite.settings.submit',
 //				],
 //			],
 //			'normal' => [
 //				'inputsdiv' => [
 //					'title' => 'Settings',
-//					'view'  => 'admin-pages.wpsp.settings.inputs',
+//					'view'  => 'admin-pages.wpsp_lite.settings.inputs',
 //				],
 //			],
 //			'advanced' => [],
