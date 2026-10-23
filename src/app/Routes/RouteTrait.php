@@ -589,7 +589,7 @@ trait RouteTrait {
 			// WP_DEBUG + Gate từ chối mà không có message (thường là Gate không gọi tới Policy):
 			// tự chẩn đoán để biết vì sao (user, đối số, Policy...).
 			if (!$message && defined('WP_DEBUG') && WP_DEBUG) {
-				$message = $value . ' bị từ chối. ' . $this->describeAuthorizationContext($ability, $arguments);
+				$message = $value . ' is denied. ' . $this->describeAuthorizationContext($ability, $arguments);
 			}
 
 			$this->requestStash($request, $this->authorizationMessageKey(), $message ?: 'This action is unauthorized.');
@@ -766,7 +766,7 @@ trait RouteTrait {
 			throw $e;
 		}
 
-		error_log(sprintf('[%s] can:%s lỗi khi gọi Gate / Policy: %s in %s:%d', static::class, $ability, $e->getMessage(), $e->getFile(), $e->getLine()));
+		error_log(sprintf('[%s] can:%s error while calling Gate / Policy: %s in %s:%d', static::class, $ability, $e->getMessage(), $e->getFile(), $e->getLine()));
 
 		return [false, null];
 	}
@@ -786,9 +786,9 @@ trait RouteTrait {
 		// ->can('view', Model::class): Gate bỏ tên class → Policy::view($user) thiếu đối số model.
 		if ($e instanceof \ArgumentCountError && $classArgument !== null) {
 			return sprintf(
-				"can:%s được truyền TÊN CLASS [%s]: Gate bỏ tên class và gọi Policy::%s(\$user) không có model. "
-				. "Ability không cần model → dùng viewAny / create, hoặc khai báo ?Model \$model = null trong Policy. "
-				. "Ability cần 1 model cụ thể → truyền tên tham số route: ->can('%s', 'user') và action khai báo kiểu Model (UsersModel \$user)",
+				"can:%s was passed CLASS NAME [%s]: Gate drops the class name and calls Policy::%s(\$user) without a model. "
+				. "Ability does not need a model → use viewAny / create, or declare ?Model \$model = null in the Policy. "
+				. "Ability needs a specific model → pass the route parameter name: ->can('%s', 'user') and type-hint the action with Model (UsersModel \$user)",
 				$ability, $classArgument, $ability, $ability
 			);
 		}
@@ -796,8 +796,8 @@ trait RouteTrait {
 		// Tham số đầu (user) của Policy không nhận kiểu user hiện tại (vd: WPUsersModel từ fallback WordPress).
 		if ($e instanceof \TypeError && str_contains($e->getMessage(), 'Argument #1')) {
 			return sprintf(
-				"can:%s: kiểu user không khớp tham số đầu của Policy. Trong wp-admin / front-end, user có thể là model fallback "
-				. "của WordPress (vd: WPUsersModel) → khai báo union type, vd: UsersModel|WPUsersModel \$user",
+				"can:%s: user type does not match the Policy's first parameter. In wp-admin / front-end, the user may be the WordPress "
+				. "fallback model (e.g. WPUsersModel) → declare a union type, e.g. UsersModel|WPUsersModel \$user",
 				$ability
 			);
 		}
@@ -1641,7 +1641,7 @@ trait RouteTrait {
 	 */
 	protected function handleInjectionError(\Throwable $e, string $className, string $name, bool $rethrow): void {
 		$message = sprintf(
-			'[%s] Không inject được [%s] vào property $%s: %s',
+			'[%s] Can not inject [%s] into property $%s: %s',
 			static::class, $className, $name, $e->getMessage()
 		);
 
@@ -1981,7 +1981,7 @@ trait RouteTrait {
 		$this->abortWithStatus(
 			$this->lastAuthorizationMessage($request) ?? 'This action is unauthorized.',
 			403,
-			'403 - Forbidden.'
+			'403 - Forbidden'
 		);
 	}
 
@@ -2291,7 +2291,7 @@ trait RouteTrait {
 		}
 
 		if (function_exists('_doing_it_wrong')) {
-			_doing_it_wrong('can:' . esc_html($ability), 'Chưa có Gate (binding "gate") để kiểm tra quyền. Route bị từ chối.', '');
+			_doing_it_wrong('can:' . esc_html($ability), 'No Gate (binding "gate") is defined for permission checks. Route has been denied.', '');
 		}
 
 		return [false, null];
@@ -2306,7 +2306,7 @@ trait RouteTrait {
 		$args    = implode(', ', array_map([$this, 'describeAuthorizationArgument'], $arguments));
 
 		if (!$hasGate) {
-			return 'Đối số: [' . $args . '] | Gate: không có binding "gate"';
+			return 'Arguments: [' . $args . '] | Gate: no binding "gate"';
 		}
 
 		$gate = $app->make('gate');
@@ -2314,13 +2314,13 @@ trait RouteTrait {
 		// Gate của WPSPCORELITE (WPSPCORELITE\App\Auth\Access\Gate) tự mô tả sẽ dùng Policy / define / capability nào.
 		if (method_exists($gate, 'explain')) {
 			try {
-				return 'Đối số: [' . $args . '] | ' . $gate->explain($ability, $arguments);
+				return 'Arguments: [' . $args . '] | ' . $gate->explain($ability, $arguments);
 			}
 			catch (\Throwable) {
 			}
 		}
 
-		return 'Đối số: [' . $args . '] | Gate: ' . get_debug_type($gate);
+		return 'Arguments: [' . $args . '] | Gate: ' . get_debug_type($gate);
 	}
 
 	/**
@@ -2379,7 +2379,7 @@ trait RouteTrait {
 			$this->respondTooManyRequests($e);
 		}
 
-		$this->abortWithStatus($this->safeErrorMessage($e), 500, '500 - Internal Server Error.');
+		$this->abortWithStatus($this->safeErrorMessage($e), 500, '500 - Internal Server Error');
 	}
 
 	/**
@@ -2395,7 +2395,7 @@ trait RouteTrait {
 
 		$this->sendHeaders($headers);
 
-		wp_die($message, $title, [
+		wp_die('<h1>' . $title . '</h1><p>' . $message . '</p>', $title, [
 			'back_link' => true,
 			'response'  => $status,
 		]);
@@ -2430,7 +2430,7 @@ trait RouteTrait {
 		if (function_exists('_doing_it_wrong')) {
 			_doing_it_wrong(
 				'throttle:' . esc_html($name),
-				sprintf('Rate limiter [%s] chưa được khai báo. Hãy gọi RateLimiter::for(\'%s\', ...) trong AppServiceProvider::boot().', esc_html($name), esc_html($name)),
+				sprintf('Rate limiter [%s] not yet declared. Call RateLimiter::for(\'%s\', ...) in AppServiceProvider::boot().', esc_html($name), esc_html($name)),
 				''
 			);
 		}
@@ -2461,7 +2461,7 @@ trait RouteTrait {
 
 		$message = is_string($custom) && $custom !== '' ? $custom : $e->getMessage();
 
-		$this->abortWithStatus($message, 429, '429 - Too Many Requests.', $headers);
+		$this->abortWithStatus($message, 429, '429 - Too Many Requests', $headers);
 	}
 
 	/**
