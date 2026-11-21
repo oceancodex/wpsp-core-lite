@@ -5,6 +5,8 @@ namespace WPSPCORELITE\App\Routes\Filters;
 use WPSPCORELITE\App\Routes\BaseRoute;
 
 /**
+ * $args = ['priority', 'accepted_args']
+ *
  * @method static $this filter(string $filter, callable|array $callback, array $args = [])
  */
 class Filters extends BaseRoute {
